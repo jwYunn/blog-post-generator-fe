@@ -34,11 +34,11 @@ export default function TopicSeedPagination({ total, page, limit, onChange }: Pr
       {/* 좌측: 결과 정보 + 페이지당 개수 */}
       <div className="flex items-center gap-3 text-sm text-gray-500">
         <span>
-          {total === 0 ? '0건' : `${from.toLocaleString()} – ${to.toLocaleString()} / 전체 ${total.toLocaleString()}건`}
+          {total === 0 ? '0 results' : `${from.toLocaleString()} – ${to.toLocaleString()} of ${total.toLocaleString()}`}
         </span>
         <span className="text-gray-300">|</span>
         <label className="flex items-center gap-1.5">
-          페이지당
+          Per page
           <select
             value={limit}
             onChange={(e) => onChange(1, Number(e.target.value))}
@@ -46,7 +46,7 @@ export default function TopicSeedPagination({ total, page, limit, onChange }: Pr
           >
             {[10, 20, 50, 100].map((n) => (
               <option key={n} value={n}>
-                {n}개
+                {n}
               </option>
             ))}
           </select>

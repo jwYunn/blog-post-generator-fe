@@ -24,18 +24,18 @@ const CATEGORIES: { value: TopicSeedCategory; label: string }[] = [
 const schema = z.object({
   seed: z
     .string()
-    .min(1, '필수 입력입니다')
-    .max(100, '최대 100자까지 입력 가능합니다'),
+    .min(1, 'Required')
+    .max(100, 'Max 100 characters'),
   category: z.enum(['meaning', 'difference', 'example', 'phrases', 'grammar'], {
-    required_error: '카테고리를 선택해주세요',
+    required_error: 'Please select a category',
   }),
   priority: z
-    .number({ invalid_type_error: '숫자를 입력해주세요' })
-    .int('정수를 입력해주세요')
-    .min(1, '1 이상이어야 합니다')
-    .max(10, '10 이하이어야 합니다'),
+    .number({ invalid_type_error: 'Must be a number' })
+    .int('Must be an integer')
+    .min(1, 'Minimum 1')
+    .max(10, 'Maximum 10'),
   isActive: z.boolean(),
-  memo: z.string().max(500, '최대 500자까지 입력 가능합니다'),
+  memo: z.string().max(500, 'Max 500 characters'),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -105,9 +105,9 @@ export default function TopicSeedFormModal({ open, seed, onClose, onSuccess }: P
     onSuccess,
     onError: (error) => {
       if (axios.isAxiosError(error) && error.response?.status === 409) {
-        setServerError('이미 존재하는 seed입니다');
+        setServerError('This seed already exists');
       } else {
-        setServerError('저장 중 오류가 발생했습니다. 다시 시도해주세요.');
+        setServerError('Failed to save. Please try again.');
       }
     },
   });
@@ -126,7 +126,7 @@ export default function TopicSeedFormModal({ open, seed, onClose, onSuccess }: P
           {/* 헤더 */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
             <DialogTitle className="text-base font-semibold text-gray-900">
-              {isEdit ? 'Seed 수정' : 'New Seed'}
+              {isEdit ? 'Edit Seed' : 'New Seed'}
             </DialogTitle>
             <button
               onClick={onClose}
@@ -216,7 +216,7 @@ export default function TopicSeedFormModal({ open, seed, onClose, onSuccess }: P
                 <div>
                   <p className="text-sm font-medium text-gray-700">Active</p>
                   <p className="text-xs text-gray-400 mt-0.5">
-                    비활성화 시 포스트 생성에 사용되지 않습니다
+                    When inactive, this seed won't be used for generation
                   </p>
                 </div>
                 <button
@@ -225,7 +225,7 @@ export default function TopicSeedFormModal({ open, seed, onClose, onSuccess }: P
                   className={`relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
                     isActive ? 'bg-blue-600' : 'bg-gray-300'
                   }`}
-                  aria-label="isActive 토글"
+                  aria-label="Toggle active state"
                 >
                   <span
                     className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200 ${
@@ -253,7 +253,7 @@ export default function TopicSeedFormModal({ open, seed, onClose, onSuccess }: P
                   className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none transition-colors ${
                     errors.memo ? 'border-red-300 bg-red-50' : 'border-gray-200'
                   }`}
-                  placeholder="관리용 메모 (선택)"
+                  placeholder="Optional memo"
                 />
                 {errors.memo && (
                   <p className="text-red-500 text-xs mt-1">{errors.memo.message}</p>
@@ -268,7 +268,7 @@ export default function TopicSeedFormModal({ open, seed, onClose, onSuccess }: P
                 onClick={onClose}
                 className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
               >
-                취소
+                Cancel
               </button>
               <button
                 type="submit"
@@ -278,12 +278,12 @@ export default function TopicSeedFormModal({ open, seed, onClose, onSuccess }: P
                 {mutation.isPending ? (
                   <span className="flex items-center gap-1.5 justify-center">
                     <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    저장 중
+                    Saving
                   </span>
                 ) : isEdit ? (
-                  '수정'
+                  'Update'
                 ) : (
-                  '생성'
+                  'Create'
                 )}
               </button>
             </div>

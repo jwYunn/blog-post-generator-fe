@@ -11,9 +11,9 @@ const CATEGORIES: { value: TopicSeedCategory; label: string }[] = [
 ];
 
 const ACTIVE_FILTERS: { label: string; value: boolean | undefined }[] = [
-  { label: '전체', value: undefined },
-  { label: '활성', value: true },
-  { label: '비활성', value: false },
+  { label: 'All', value: undefined },
+  { label: 'Active', value: true },
+  { label: 'Inactive', value: false },
 ];
 
 interface Props {
@@ -52,7 +52,7 @@ export default function TopicSeedFilters({ params, onChange }: Props) {
           type="text"
           value={searchValue}
           onChange={(e) => handleSearch(e.target.value)}
-          placeholder="Seed 키워드 검색..."
+          placeholder="Search seeds..."
           className="w-full pl-9 pr-8 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
         {searchValue && (
@@ -73,7 +73,7 @@ export default function TopicSeedFilters({ params, onChange }: Props) {
         }
         className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
       >
-        <option value="">전체 카테고리</option>
+        <option value="">All categories</option>
         {CATEGORIES.map((c) => (
           <option key={c.value} value={c.value}>
             {c.label}

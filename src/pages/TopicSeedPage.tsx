@@ -101,7 +101,7 @@ export default function TopicSeedPage() {
           <div>
             <h1 className="text-xl font-bold text-gray-900">Topic Seeds</h1>
             <p className="text-sm text-gray-400 mt-0.5">
-              블로그 포스트 생성에 사용할 시드 키워드를 관리합니다
+              Manage seed keywords used for blog post generation
             </p>
           </div>
           <button
