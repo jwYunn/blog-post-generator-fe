@@ -1,31 +1,37 @@
 import type { ArticleDraftStatus } from '../../types/articleDraft';
 
-// ─── Pipeline Step Definition ─────────────────────────────────────────────────
+// ─── StepKey (exported for DetailPage) ───────────────────────────────────────
+
+export type StepKey = 'outline' | 'content' | 'thumbnail' | 'review';
+
+// ─── Internal types ───────────────────────────────────────────────────────────
 
 type StepState = 'done' | 'active' | 'pending';
 
 interface PipelineStep {
-  key: string;
+  key: StepKey;
   label: string;
   state: StepState;
 }
 
-// Maps draft status → which pipeline step is currently active / done
+const STEPS: { key: StepKey; label: string }[] = [
+  { key: 'outline',   label: 'Outline'   },
+  { key: 'content',   label: 'Content'   },
+  { key: 'thumbnail', label: 'Thumbnail' },
+  { key: 'review',    label: 'Review'    },
+];
+
 const STATUS_TO_STEP_INDEX: Partial<Record<ArticleDraftStatus, number>> = {
-  // step 0 = Outline, 1 = Content, 2 = Thumbnail, 3 = Review
-  queued: -1,              // nothing started yet (all pending)
-  generating_outline: 0,   // step 0 active
-  outline_generated: 0,    // step 0 done
-  generating_content: 1,   // step 1 active
-  content_generated: 1,    // step 1 done
-  generating_thumbnail: 2, // step 2 active
-  review_ready: 3,         // all done (or step 3 done)
-  failed: -2,              // show as failed
+  queued:               -1,
+  generating_outline:    0,
+  outline_generated:     0,
+  generating_content:    1,
+  content_generated:     1,
+  generating_thumbnail:  2,
+  review_ready:          3,
+  failed:               -2,
 };
 
-const STEP_LABELS = ['Outline', 'Content', 'Thumbnail', 'Review'];
-
-// Which statuses mark a step as "active" (spinner) vs "done" (filled circle)
 const ACTIVE_STATUSES: ArticleDraftStatus[] = [
   'generating_outline',
   'generating_content',
@@ -34,10 +40,10 @@ const ACTIVE_STATUSES: ArticleDraftStatus[] = [
 
 function buildSteps(status: ArticleDraftStatus): PipelineStep[] {
   const stepIndex = STATUS_TO_STEP_INDEX[status] ?? -1;
-  const isActive = ACTIVE_STATUSES.includes(status);
-  const isFailed = status === 'failed';
+  const isActive  = ACTIVE_STATUSES.includes(status);
+  const isFailed  = status === 'failed';
 
-  return STEP_LABELS.map((label, i) => {
+  return STEPS.map(({ key, label }, i) => {
     let state: StepState;
 
     if (isFailed) {
@@ -50,12 +56,9 @@ function buildSteps(status: ArticleDraftStatus): PipelineStep[] {
       state = 'pending';
     }
 
-    // Special case: review_ready → all steps done
-    if (status === 'review_ready') {
-      state = 'done';
-    }
+    if (status === 'review_ready') state = 'done';
 
-    return { key: label, label, state };
+    return { key, label, state };
   });
 }
 
@@ -69,7 +72,6 @@ function StepIcon({ state, failed }: { state: StepState; failed?: boolean }) {
       </span>
     );
   }
-
   if (state === 'done') {
     return (
       <span className="w-5 h-5 rounded-full bg-blue-600 border-2 border-blue-600 flex items-center justify-center">
@@ -79,7 +81,6 @@ function StepIcon({ state, failed }: { state: StepState; failed?: boolean }) {
       </span>
     );
   }
-
   if (state === 'active') {
     return (
       <span className="w-5 h-5 rounded-full border-2 border-blue-500 flex items-center justify-center">
@@ -87,18 +88,12 @@ function StepIcon({ state, failed }: { state: StepState; failed?: boolean }) {
       </span>
     );
   }
-
-  // pending
-  return (
-    <span className="w-5 h-5 rounded-full border-2 border-gray-300 bg-white" />
-  );
+  return <span className="w-5 h-5 rounded-full border-2 border-gray-300 bg-white" />;
 }
 
 function Connector({ done }: { done: boolean }) {
   return (
-    <div
-      className={`flex-1 h-0.5 mx-1 transition-colors ${done ? 'bg-blue-600' : 'bg-gray-200'}`}
-    />
+    <div className={`flex-1 h-0.5 mx-1 transition-colors ${done ? 'bg-blue-600' : 'bg-gray-200'}`} />
   );
 }
 
@@ -106,45 +101,82 @@ function Connector({ done }: { done: boolean }) {
 
 interface Props {
   status: ArticleDraftStatus;
+  selectedStep: StepKey | null;
+  availableSteps: StepKey[];
+  onSelectStep: (step: StepKey) => void;
 }
 
-export default function ArticleDraftPipeline({ status }: Props) {
-  const steps = buildSteps(status);
+export default function ArticleDraftPipeline({
+  status,
+  selectedStep,
+  availableSteps,
+  onSelectStep,
+}: Props) {
+  const steps    = buildSteps(status);
   const isFailed = status === 'failed';
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 px-6 py-4">
-      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
+      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-5">
         Pipeline
       </p>
 
-      <div className="flex items-center">
-        {steps.map((step, i) => (
-          <div key={step.key} className="flex items-center flex-1 last:flex-none">
-            {/* Step */}
-            <div className="flex flex-col items-center gap-1.5">
-              <StepIcon state={step.state} failed={isFailed && i === 0} />
-              <span
-                className={`text-xs font-medium whitespace-nowrap ${
-                  step.state === 'done'
-                    ? 'text-blue-600'
-                    : step.state === 'active'
-                      ? 'text-blue-500'
-                      : isFailed
-                        ? 'text-gray-400'
-                        : 'text-gray-400'
+      <div className="flex items-start">
+        {steps.map((step, i) => {
+          const isAvailable = availableSteps.includes(step.key);
+          const isSelected  = selectedStep === step.key;
+
+          return (
+            <div key={step.key} className="flex items-start flex-1 last:flex-none">
+              {/* Step button */}
+              <button
+                onClick={() => isAvailable && onSelectStep(step.key)}
+                disabled={!isAvailable}
+                className={`flex flex-col items-center gap-1.5 group ${
+                  isAvailable ? 'cursor-pointer' : 'cursor-default'
                 }`}
               >
-                {step.label}
-              </span>
-            </div>
+                {/* Icon */}
+                <div
+                  className={`transition-transform ${
+                    isAvailable && !isSelected ? 'group-hover:scale-110' : ''
+                  }`}
+                >
+                  <StepIcon state={step.state} failed={isFailed && i === 0} />
+                </div>
 
-            {/* Connector (except after last step) */}
-            {i < steps.length - 1 && (
-              <Connector done={step.state === 'done' && !isFailed} />
-            )}
-          </div>
-        ))}
+                {/* Label */}
+                <span
+                  className={`text-xs whitespace-nowrap transition-colors ${
+                    isSelected
+                      ? 'font-semibold text-blue-700'
+                      : isAvailable && step.state === 'done'
+                        ? 'font-medium text-blue-600 group-hover:text-blue-700'
+                        : step.state === 'active'
+                          ? 'font-medium text-blue-500'
+                          : 'font-medium text-gray-400'
+                  }`}
+                >
+                  {step.label}
+                </span>
+
+                {/* Selected indicator */}
+                <span
+                  className={`w-1 h-1 rounded-full bg-blue-600 transition-opacity ${
+                    isSelected ? 'opacity-100' : 'opacity-0'
+                  }`}
+                />
+              </button>
+
+              {/* Connector */}
+              {i < steps.length - 1 && (
+                <div className="flex-1 pt-2.5 mx-1">
+                  <Connector done={step.state === 'done' && !isFailed} />
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {isFailed && (

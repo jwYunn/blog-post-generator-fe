@@ -2,15 +2,37 @@ import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Copy, Check } from 'lucide-react';
 
+// ─── Props ────────────────────────────────────────────────────────────────────
+
 interface Props {
   content: string;
+  label?: string;                     // 헤더 제목, 기본값: 'Content'
+  showCopy?: boolean;                 // Copy 버튼 표시 여부, 기본값: false
+  thumbnailImageUrl?: string | null;  // Preview 모드에서 상단에 표시
 }
 
 // ─── Markdown Preview ─────────────────────────────────────────────────────────
 
-function MarkdownPreview({ content }: { content: string }) {
+function MarkdownPreview({
+  content,
+  thumbnailImageUrl,
+}: {
+  content: string;
+  thumbnailImageUrl?: string | null;
+}) {
   return (
     <div className="px-6 py-5">
+      {/* Thumbnail (Review 단계에서만 전달됨) */}
+      {thumbnailImageUrl && (
+        <div className="mb-6 rounded-xl overflow-hidden border border-gray-100 bg-gray-50 flex items-center justify-center">
+          <img
+            src={thumbnailImageUrl}
+            alt="Article thumbnail"
+            className="max-w-full max-h-72 object-contain"
+          />
+        </div>
+      )}
+
       <ReactMarkdown
         components={{
           h1: ({ children }) => (
@@ -48,7 +70,6 @@ function MarkdownPreview({ content }: { content: string }) {
             </blockquote>
           ),
           code: ({ children, className }) => {
-            // inline code vs fenced code block
             const isBlock = !!className;
             return isBlock ? (
               <code className="block bg-gray-50 border border-gray-100 rounded-lg px-4 py-3 text-sm font-mono text-gray-800 overflow-x-auto my-3 whitespace-pre">
@@ -68,9 +89,7 @@ function MarkdownPreview({ content }: { content: string }) {
               </table>
             </div>
           ),
-          thead: ({ children }) => (
-            <thead className="bg-gray-50">{children}</thead>
-          ),
+          thead: ({ children }) => <thead className="bg-gray-50">{children}</thead>,
           th: ({ children }) => (
             <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
               {children}
@@ -102,8 +121,13 @@ function MarkdownPreview({ content }: { content: string }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function ArticleDraftContentSection({ content }: Props) {
-  const [copied, setCopied] = useState(false);
+export default function ArticleDraftContentSection({
+  content,
+  label = 'Content',
+  showCopy = false,
+  thumbnailImageUrl,
+}: Props) {
+  const [copied, setCopied]       = useState(false);
   const [isPreview, setIsPreview] = useState(true);
 
   const handleCopy = async () => {
@@ -123,7 +147,7 @@ export default function ArticleDraftContentSection({ content }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-3.5 border-b border-gray-100 bg-gray-50/60">
         <div className="flex items-center gap-2">
-          <h2 className="text-sm font-semibold text-gray-800">Content</h2>
+          <h2 className="text-sm font-semibold text-gray-800">{label}</h2>
           {!isPreview && (
             <span className="text-xs text-gray-400 tabular-nums">{lineCount} lines</span>
           )}
@@ -154,30 +178,32 @@ export default function ArticleDraftContentSection({ content }: Props) {
             </button>
           </div>
 
-          {/* Copy */}
-          <button
-            onClick={handleCopy}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-            title="Copy raw markdown"
-          >
-            {copied ? (
-              <>
-                <Check className="w-3.5 h-3.5 text-green-500" />
-                <span className="text-green-600">Copied</span>
-              </>
-            ) : (
-              <>
-                <Copy className="w-3.5 h-3.5" />
-                Copy
-              </>
-            )}
-          </button>
+          {/* Copy — showCopy=true 일 때만 표시 (Review 단계) */}
+          {showCopy && (
+            <button
+              onClick={handleCopy}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              title="Copy raw markdown"
+            >
+              {copied ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-green-500" />
+                  <span className="text-green-600">Copied</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5" />
+                  Copy
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
 
       {/* Body */}
       {isPreview ? (
-        <MarkdownPreview content={content} />
+        <MarkdownPreview content={content} thumbnailImageUrl={thumbnailImageUrl} />
       ) : (
         <div className="overflow-x-auto">
           <pre className="px-6 py-5 text-sm text-gray-700 leading-relaxed font-mono whitespace-pre-wrap break-words">
