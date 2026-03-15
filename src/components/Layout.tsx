@@ -1,9 +1,10 @@
 import { Outlet, NavLink } from 'react-router-dom';
-import { Sprout, ListTree } from 'lucide-react';
+import { Sprout, ListTree, FileText } from 'lucide-react';
 
 const NAV_ITEMS = [
   { to: '/topic-seeds', label: 'Topic Seeds', icon: Sprout },
   { to: '/topic-candidates', label: 'Candidates', icon: ListTree },
+  { to: '/article-drafts', label: 'Article Drafts', icon: FileText },
 ] as const;
 
 export default function Layout() {

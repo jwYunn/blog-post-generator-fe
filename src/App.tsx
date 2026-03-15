@@ -3,6 +3,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Layout from './components/Layout';
 import TopicSeedPage from './pages/TopicSeedPage';
 import TopicCandidatePage from './pages/TopicCandidatePage';
+import ArticleDraftListPage from './pages/ArticleDraftListPage';
+import ArticleDraftDetailPage from './pages/ArticleDraftDetailPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -22,6 +24,8 @@ function App() {
             <Route index element={<Navigate to="/topic-seeds" replace />} />
             <Route path="/topic-seeds" element={<TopicSeedPage />} />
             <Route path="/topic-candidates" element={<TopicCandidatePage />} />
+            <Route path="/article-drafts" element={<ArticleDraftListPage />} />
+            <Route path="/article-drafts/:id" element={<ArticleDraftDetailPage />} />
           </Route>
         </Routes>
       </BrowserRouter>
