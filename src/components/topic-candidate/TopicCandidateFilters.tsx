@@ -2,7 +2,7 @@ import type { TopicCandidateListParams, TopicCandidateStatus } from '../../types
 import type { TopicSeed } from '../../types/topicSeed';
 
 const STATUS_FILTERS: { label: string; value: TopicCandidateStatus | undefined }[] = [
-  { label: '전체', value: undefined },
+  { label: 'All', value: undefined },
   { label: 'Pending', value: 'pending' },
   { label: 'Approved', value: 'approved' },
   { label: 'Rejected', value: 'rejected' },
@@ -23,7 +23,7 @@ export default function TopicCandidateFilters({ params, seeds, onChange }: Props
         onChange={(e) => onChange({ topicSeedId: e.target.value || undefined })}
         className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white min-w-[180px]"
       >
-        <option value="">전체 Seed</option>
+        <option value="">All seeds</option>
         {seeds.map((s) => (
           <option key={s.id} value={s.id}>
             {s.seed}

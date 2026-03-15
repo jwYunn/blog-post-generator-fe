@@ -1,4 +1,5 @@
 import { ChevronsUpDown, ChevronUp, ChevronDown, Pencil, Trash2, RefreshCw, Sparkles } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import type { TopicSeed, TopicSeedListParams } from '../../types/topicSeed';
 
 // ─── 상수 ─────────────────────────────────────────────────────────────────────
@@ -160,12 +161,12 @@ export default function TopicSeedTable({
                     <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center">
                       <RefreshCw className="w-5 h-5 text-red-400" />
                     </div>
-                    <p className="text-gray-500 text-sm">데이터를 불러오는 중 오류가 발생했습니다</p>
+                    <p className="text-gray-500 text-sm">Failed to load data</p>
                     <button
                       onClick={onRetry}
                       className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded-lg transition-colors"
                     >
-                      다시 시도
+                      Retry
                     </button>
                   </div>
                 </td>
@@ -176,8 +177,8 @@ export default function TopicSeedTable({
                 <td colSpan={8} className="px-4 py-20 text-center">
                   <div className="flex flex-col items-center gap-2">
                     <span className="text-4xl">🌱</span>
-                    <p className="text-gray-500 text-sm mt-1">등록된 Seed가 없습니다</p>
-                    <p className="text-gray-400 text-xs">우상단 New Seed 버튼으로 추가해보세요</p>
+                    <p className="text-gray-500 text-sm mt-1">No seeds found</p>
+                    <p className="text-gray-400 text-xs">Click the New Seed button to get started</p>
                   </div>
                 </td>
               </tr>
@@ -190,7 +191,12 @@ export default function TopicSeedTable({
                 >
                   {/* seed */}
                   <td className="px-4 py-3.5">
-                    <div className="font-medium text-gray-900">{seed.seed}</div>
+                    <Link
+                      to={`/topic-candidates?seedId=${seed.id}`}
+                      className="font-medium text-gray-900 hover:text-blue-600 transition-colors"
+                    >
+                      {seed.seed}
+                    </Link>
                     {seed.normalizedSeed !== seed.seed && (
                       <div className="text-xs text-gray-400 mt-0.5">{seed.normalizedSeed}</div>
                     )}
@@ -252,7 +258,7 @@ export default function TopicSeedTable({
                       <button
                         onClick={() => onGenerate(seed.id)}
                         disabled={!seed.isActive || generatingSeedIds[seed.id]}
-                        title={!seed.isActive ? 'Inactive seed는 Generate 불가' : 'Generate candidates'}
+                        title={!seed.isActive ? 'Cannot generate for inactive seeds' : 'Generate candidates'}
                         className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg transition-colors ${
                           seed.isActive && !generatingSeedIds[seed.id]
                             ? 'text-violet-700 bg-violet-50 hover:bg-violet-100'
@@ -271,14 +277,14 @@ export default function TopicSeedTable({
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={() => onEdit(seed)}
-                          title="수정"
+                          title="Edit"
                           className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => onDelete(seed)}
-                          title="삭제"
+                          title="Delete"
                           className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                         >
                           <Trash2 className="w-4 h-4" />
