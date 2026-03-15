@@ -1,7 +1,11 @@
 import axios from 'axios';
 import type {
+  TopicCandidate,
   TopicCandidateListResponse,
   TopicCandidateListParams,
+  UpdateTopicCandidateStatusRequest,
+  PaginatedCandidates,
+  CandidateListQuery,
 } from '../types/topicCandidate';
 
 const api = axios.create({
@@ -12,6 +16,22 @@ const api = axios.create({
 export const topicCandidateApi = {
   getList: async (params: TopicCandidateListParams): Promise<TopicCandidateListResponse> => {
     const { data } = await api.get<TopicCandidateListResponse>('/topic-candidates', { params });
+    return data;
+  },
+
+  updateStatus: async (id: string, body: UpdateTopicCandidateStatusRequest): Promise<TopicCandidate> => {
+    const { data } = await api.patch<TopicCandidate>(`/topic-candidates/${id}/status`, body);
+    return data;
+  },
+
+  fetchSeedCandidates: async (
+    seedId: string,
+    query: CandidateListQuery,
+  ): Promise<PaginatedCandidates> => {
+    const { data } = await api.get<PaginatedCandidates>(
+      `/topic-seeds/${seedId}/candidates`,
+      { params: query },
+    );
     return data;
   },
 };

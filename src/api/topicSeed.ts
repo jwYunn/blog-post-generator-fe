@@ -37,6 +37,11 @@ export const topicSeedApi = {
     await api.delete(`/topic-seeds/${id}`);
   },
 
+  getOne: async (id: string): Promise<TopicSeed> => {
+    const { data } = await api.get<TopicSeed>(`/topic-seeds/${id}`);
+    return data;
+  },
+
   generate: async (id: string): Promise<GenerateResponse> => {
     const { data } = await api.post<GenerateResponse>(`/topic-seeds/${id}/generate`);
     return data;

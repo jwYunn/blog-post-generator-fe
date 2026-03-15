@@ -18,6 +18,12 @@ export interface TopicCandidateListResponse {
   limit: number;
 }
 
+export type UpdateCandidateStatus = 'approved' | 'rejected';
+
+export interface UpdateTopicCandidateStatusRequest {
+  status: UpdateCandidateStatus;
+}
+
 export interface TopicCandidateListParams {
   page?: number;
   limit?: number;
@@ -27,5 +33,25 @@ export interface TopicCandidateListParams {
   minScore?: number;
   maxScore?: number;
   sortBy?: 'createdAt' | 'score';
+  sortOrder?: 'ASC' | 'DESC';
+}
+
+// ─── Seed 상세 페이지용 ────────────────────────────────────────────────────────
+
+export interface PaginatedCandidates {
+  data: TopicCandidate[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface CandidateListQuery {
+  page?: number;
+  limit?: number;
+  status?: TopicCandidateStatus;
+  keyword?: string;
+  minScore?: number;
+  maxScore?: number;
+  sortBy?: 'createdAt' | 'score' | 'title';
   sortOrder?: 'ASC' | 'DESC';
 }

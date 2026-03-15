@@ -1,5 +1,6 @@
 import { ChevronsUpDown, ChevronUp, ChevronDown, RefreshCw } from 'lucide-react';
 import type { TopicCandidate, TopicCandidateListParams, TopicCandidateStatus } from '../../types/topicCandidate';
+import CandidateStatusActions from './CandidateStatusActions';
 
 // ─── 상수 ─────────────────────────────────────────────────────────────────────
 
@@ -53,11 +54,11 @@ function ScoreBadge({ score }: { score: number }) {
 }
 
 const SKELETON_WIDTHS = [
-  ['60%', '45%', '10%', '15%', '20%'],
-  ['75%', '55%', '10%', '15%', '20%'],
-  ['50%', '40%', '10%', '15%', '20%'],
-  ['70%', '50%', '10%', '15%', '20%'],
-  ['65%', '60%', '10%', '15%', '20%'],
+  ['60%', '45%', '10%', '15%', '20%', '30%'],
+  ['75%', '55%', '10%', '15%', '20%', '30%'],
+  ['50%', '40%', '10%', '15%', '20%', '30%'],
+  ['70%', '50%', '10%', '15%', '20%', '30%'],
+  ['65%', '60%', '10%', '15%', '20%', '30%'],
 ];
 
 function SkeletonRow({ index }: { index: number }) {
@@ -110,6 +111,7 @@ export default function TopicCandidateTable({
     { key: 'score', label: 'Score', sortable: 'score' },
     { key: 'status', label: 'Status' },
     { key: 'createdAt', label: 'Created', sortable: 'createdAt', className: 'min-w-[100px]' },
+    { key: 'actions', label: 'Actions', className: 'min-w-[140px]' },
   ];
 
   return (
@@ -147,28 +149,28 @@ export default function TopicCandidateTable({
               Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} index={i} />)
             ) : isError ? (
               <tr>
-                <td colSpan={5} className="px-4 py-20 text-center">
+                <td colSpan={6} className="px-4 py-20 text-center">
                   <div className="flex flex-col items-center gap-3">
                     <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center">
                       <RefreshCw className="w-5 h-5 text-red-400" />
                     </div>
-                    <p className="text-gray-500 text-sm">데이터를 불러오는 중 오류가 발생했습니다</p>
+                    <p className="text-gray-500 text-sm">Failed to load data</p>
                     <button
                       onClick={onRetry}
                       className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded-lg transition-colors"
                     >
-                      다시 시도
+                      Retry
                     </button>
                   </div>
                 </td>
               </tr>
             ) : data.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-20 text-center">
+                <td colSpan={6} className="px-4 py-20 text-center">
                   <div className="flex flex-col items-center gap-2">
                     <span className="text-4xl">📭</span>
-                    <p className="text-gray-500 text-sm mt-1">생성된 Candidate가 없습니다</p>
-                    <p className="text-gray-400 text-xs">Topic Seeds에서 Generate를 실행해보세요</p>
+                    <p className="text-gray-500 text-sm mt-1">No candidates found</p>
+                    <p className="text-gray-400 text-xs">Run Generate on a Topic Seed to create candidates</p>
                   </div>
                 </td>
               </tr>
@@ -206,6 +208,11 @@ export default function TopicCandidateTable({
                   {/* createdAt */}
                   <td className="px-4 py-3.5 text-gray-500 tabular-nums">
                     {formatDate(candidate.createdAt)}
+                  </td>
+
+                  {/* actions */}
+                  <td className="px-4 py-3.5">
+                    <CandidateStatusActions id={candidate.id} status={candidate.status} />
                   </td>
                 </tr>
               ))
