@@ -10,6 +10,7 @@ import ArticleDraftPipeline from '../components/article-draft/ArticleDraftPipeli
 import type { StepKey } from '../components/article-draft/ArticleDraftPipeline';
 import ArticleDraftOutlineSection from '../components/article-draft/ArticleDraftOutlineSection';
 import ArticleDraftContentSection from '../components/article-draft/ArticleDraftContentSection';
+import HashtagsSection from '../components/article-draft/HashtagsSection';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -113,12 +114,15 @@ function StepContent({
 
     case 'content':
       return draft.content ? (
-        // Content 단: 토글 O, Copy X
-        <ArticleDraftContentSection
-          content={draft.content}
-          label="Content"
-          showCopy={false}
-        />
+        // Content 단: 토글 O, Copy X, 하단에 hashtags
+        <div className="space-y-4">
+          <ArticleDraftContentSection
+            content={draft.content}
+            label="Content"
+            showCopy={false}
+          />
+          <HashtagsSection hashtags={draft.hashtags} />
+        </div>
       ) : (
         isInProgress ? <GeneratingPlaceholder /> : null
       );
@@ -131,14 +135,17 @@ function StepContent({
       );
 
     case 'review':
-      // Review 단: 썸네일 + 마크다운, 토글 O, Copy O
+      // Review 단: 썸네일 + 마크다운, 토글 O, Copy O, 하단에 hashtags
       return draft.content ? (
-        <ArticleDraftContentSection
-          content={draft.content}
-          label="Review"
-          showCopy={true}
-          thumbnailImageUrl={draft.thumbnailImageUrl}
-        />
+        <div className="space-y-4">
+          <ArticleDraftContentSection
+            content={draft.content}
+            label="Review"
+            showCopy={true}
+            thumbnailImageUrl={draft.thumbnailImageUrl}
+          />
+          <HashtagsSection hashtags={draft.hashtags} />
+        </div>
       ) : null;
   }
 }

@@ -41,6 +41,7 @@ export interface ArticleDraft {
   outline: ArticleOutline | null;
   content: string | null;
   thumbnailImageUrl: string | null;
+  hashtags: string[] | null;
   errorMessage: string | null;
   createdAt: string;
   updatedAt: string;

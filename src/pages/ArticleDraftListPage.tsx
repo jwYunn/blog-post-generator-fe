@@ -1,11 +1,59 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Copy, Check } from 'lucide-react';
 import { articleDraftApi } from '../api/articleDrafts';
 import type { ArticleDraftListParams, ArticleDraftStatus } from '../types/articleDraft';
 import { IN_PROGRESS_STATUSES } from '../types/articleDraft';
 import ArticleDraftStatusBadge from '../components/article-draft/ArticleDraftStatusBadge';
+
+// ─── 인라인 해시태그 복사 버튼 ────────────────────────────────────────────────
+
+function InlineHashtags({ hashtags }: { hashtags: string[] | null }) {
+  const [copied, setCopied] = useState(false);
+
+  if (!hashtags || hashtags.length === 0) return null;
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(hashtags.join(' '));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // clipboard not available
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+      {hashtags.slice(0, 6).map((tag) => (
+        <span
+          key={tag}
+          className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 text-blue-600 border border-blue-100"
+        >
+          {tag}
+        </span>
+      ))}
+      {hashtags.length > 6 && (
+        <span className="text-[10px] text-gray-400 font-medium">
+          +{hashtags.length - 6}
+        </span>
+      )}
+      <button
+        onClick={handleCopy}
+        title="Copy all hashtags"
+        className="ml-0.5 flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+      >
+        {copied ? (
+          <><Check className="w-3 h-3 text-green-500" /><span className="text-green-600">Copied</span></>
+        ) : (
+          <><Copy className="w-3 h-3" />Copy</>
+        )}
+      </button>
+    </div>
+  );
+}
 
 // ─── 상수 ─────────────────────────────────────────────────────────────────────
 
@@ -203,6 +251,9 @@ export default function ArticleDraftListPage() {
                     <td className="px-4 py-4">
                       <p className="font-medium text-gray-900 leading-snug">{draft.title}</p>
                       <p className="text-xs text-gray-400 mt-0.5">{draft.keyword}</p>
+                      {(draft.status === 'content_generated' || draft.status === 'review_ready') && (
+                        <InlineHashtags hashtags={draft.hashtags} />
+                      )}
                     </td>
 
                     {/* Status */}
