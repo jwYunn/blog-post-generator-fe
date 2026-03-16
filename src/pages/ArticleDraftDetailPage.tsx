@@ -114,14 +114,14 @@ function StepContent({
 
     case 'content':
       return draft.content ? (
-        // Content 단: 토글 O, Copy X, 하단에 hashtags
+        // Content 단: hashtags → 토글 O, Copy X
         <div className="space-y-4">
+          <HashtagsSection hashtags={draft.hashtags} />
           <ArticleDraftContentSection
             content={draft.content}
             label="Content"
             showCopy={false}
           />
-          <HashtagsSection hashtags={draft.hashtags} />
         </div>
       ) : (
         isInProgress ? <GeneratingPlaceholder /> : null
