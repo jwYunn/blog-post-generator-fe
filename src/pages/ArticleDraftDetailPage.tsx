@@ -135,16 +135,16 @@ function StepContent({
       );
 
     case 'review':
-      // Review 단: 썸네일 + 마크다운, 토글 O, Copy O, 하단에 hashtags
+      // Review 단: hashtags → 썸네일 + 마크다운, 토글 O, Copy O
       return draft.content ? (
         <div className="space-y-4">
+          <HashtagsSection hashtags={draft.hashtags} />
           <ArticleDraftContentSection
             content={draft.content}
             label="Review"
             showCopy={true}
             thumbnailImageUrl={draft.thumbnailImageUrl}
           />
-          <HashtagsSection hashtags={draft.hashtags} />
         </div>
       ) : null;
   }
