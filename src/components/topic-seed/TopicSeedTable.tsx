@@ -1,5 +1,5 @@
 import { ChevronsUpDown, ChevronUp, ChevronDown, Pencil, Trash2, RefreshCw, Sparkles } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import type { TopicSeed, TopicSeedListParams } from '../../types/topicSeed';
 
 // ─── 상수 ─────────────────────────────────────────────────────────────────────
@@ -112,6 +112,8 @@ export default function TopicSeedTable({
   onGenerate,
   generatingSeedIds,
 }: Props) {
+  const navigate = useNavigate();
+
   const headers: Array<{ key: string; label: string; sortable?: SortableColumn; className?: string }> = [
     { key: 'seed', label: 'Seed', className: 'min-w-[160px]' },
     { key: 'category', label: 'Category' },
@@ -187,16 +189,12 @@ export default function TopicSeedTable({
               data.map((seed) => (
                 <tr
                   key={seed.id}
-                  className="hover:bg-blue-50/30 transition-colors group"
+                  onClick={() => navigate(`/topic-candidates?seedId=${seed.id}`)}
+                  className="hover:bg-blue-50/30 transition-colors group cursor-pointer"
                 >
                   {/* seed */}
                   <td className="px-4 py-3.5">
-                    <Link
-                      to={`/topic-candidates?seedId=${seed.id}`}
-                      className="font-medium text-gray-900 hover:text-blue-600 transition-colors"
-                    >
-                      {seed.seed}
-                    </Link>
+                    <span className="font-medium text-gray-900">{seed.seed}</span>
                     {seed.normalizedSeed !== seed.seed && (
                       <div className="text-xs text-gray-400 mt-0.5">{seed.normalizedSeed}</div>
                     )}
@@ -254,9 +252,9 @@ export default function TopicSeedTable({
                   {/* 액션 */}
                   <td className="px-4 py-3.5">
                     <div className="flex items-center gap-2">
-                      {/* Generate 버튼 — 항상 표시, inactive 시 disabled */}
+                      {/* Generate 버튼 */}
                       <button
-                        onClick={() => onGenerate(seed.id)}
+                        onClick={(e) => { e.stopPropagation(); onGenerate(seed.id); }}
                         disabled={!seed.isActive || generatingSeedIds[seed.id]}
                         title={!seed.isActive ? 'Cannot generate for inactive seeds' : 'Generate candidates'}
                         className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg transition-colors ${
@@ -276,14 +274,14 @@ export default function TopicSeedTable({
                       {/* Edit / Delete — hover 시 표시 */}
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
-                          onClick={() => onEdit(seed)}
+                          onClick={(e) => { e.stopPropagation(); onEdit(seed); }}
                           title="Edit"
                           className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => onDelete(seed)}
+                          onClick={(e) => { e.stopPropagation(); onDelete(seed); }}
                           title="Delete"
                           className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                         >
