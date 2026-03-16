@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { marked } from 'marked';
 import { Copy, Check } from 'lucide-react';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -7,9 +8,13 @@ import { Copy, Check } from 'lucide-react';
 interface Props {
   content: string;
   label?: string;                     // 헤더 제목, 기본값: 'Content'
-  showCopy?: boolean;                 // Copy 버튼 표시 여부, 기본값: false
-  thumbnailImageUrl?: string | null;  // Preview 모드에서 상단에 표시
+  showCopy?: boolean;                 // Review 단계에서만 true
+  thumbnailImageUrl?: string | null;  // Preview 모드 상단 썸네일 (Review 전용)
 }
+
+// ─── View mode ────────────────────────────────────────────────────────────────
+
+type ViewMode = 'preview' | 'markdown' | 'html';
 
 // ─── Markdown Preview ─────────────────────────────────────────────────────────
 
@@ -22,7 +27,6 @@ function MarkdownPreview({
 }) {
   return (
     <div className="px-6 py-5">
-      {/* Thumbnail (Review 단계에서만 전달됨) */}
       {thumbnailImageUrl && (
         <div className="mb-6 rounded-xl overflow-hidden border border-gray-100 bg-gray-50 flex items-center justify-center">
           <img
@@ -32,7 +36,6 @@ function MarkdownPreview({
           />
         </div>
       )}
-
       <ReactMarkdown
         components={{
           h1: ({ children }) => (
@@ -119,6 +122,18 @@ function MarkdownPreview({
   );
 }
 
+// ─── Source view (Markdown / HTML 탭) ─────────────────────────────────────────
+
+function SourceView({ text }: { text: string }) {
+  return (
+    <div className="overflow-x-auto">
+      <pre className="px-6 py-5 text-sm text-gray-700 leading-relaxed font-mono whitespace-pre-wrap break-words">
+        {text}
+      </pre>
+    </div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function ArticleDraftContentSection({
@@ -127,12 +142,35 @@ export default function ArticleDraftContentSection({
   showCopy = false,
   thumbnailImageUrl,
 }: Props) {
-  const [copied, setCopied]       = useState(false);
-  const [isPreview, setIsPreview] = useState(true);
+  const [copied, setCopied]         = useState(false);
+  // Review 단: preview | markdown | html / Content 단: preview | markdown(=raw)
+  const [viewMode, setViewMode]     = useState<ViewMode>('preview');
+
+  // HTML 변환 — showCopy(=Review) 단에서만 사용
+  const htmlContent = useMemo<string>(() => {
+    if (!showCopy) return '';
+    return marked.parse(content) as string;
+  }, [content, showCopy]);
+
+  // 현재 모드에서 복사할 텍스트 (썸네일 있으면 상단 가운데 삽입)
+  const copyText = (): string => {
+    if (viewMode === 'markdown') {
+      if (!thumbnailImageUrl) return content;
+      const thumbMd = `<div align="center">\n\n![thumbnail](${thumbnailImageUrl})\n\n</div>\n\n`;
+      return thumbMd + content;
+    }
+    // preview / html → HTML 복사
+    if (!thumbnailImageUrl) return htmlContent;
+    const thumbHtml =
+      `<div style="text-align: center; margin-bottom: 24px;">\n` +
+      `  <img src="${thumbnailImageUrl}" alt="thumbnail" style="max-width: 100%; height: auto;" />\n` +
+      `</div>\n\n`;
+    return thumbHtml + htmlContent;
+  };
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(content);
+      await navigator.clipboard.writeText(copyText());
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -140,7 +178,23 @@ export default function ArticleDraftContentSection({
     }
   };
 
-  const lineCount = content.split('\n').length;
+  const lineCount = viewMode === 'html'
+    ? htmlContent.split('\n').length
+    : content.split('\n').length;
+
+  // ─── 토글 버튼 정의 ─────────────────────────────────────────────────────────
+  // Review 단(showCopy): Preview | Markdown | HTML
+  // Content 단         : Preview | Raw (내부적으로 'markdown' 모드)
+  const tabs = showCopy
+    ? ([
+        { mode: 'preview'  as ViewMode, label: 'Preview'  },
+        { mode: 'markdown' as ViewMode, label: 'Markdown' },
+        { mode: 'html'     as ViewMode, label: 'HTML'     },
+      ])
+    : ([
+        { mode: 'preview'  as ViewMode, label: 'Preview' },
+        { mode: 'markdown' as ViewMode, label: 'Raw'     },
+      ]);
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -148,42 +202,35 @@ export default function ArticleDraftContentSection({
       <div className="flex items-center justify-between px-6 py-3.5 border-b border-gray-100 bg-gray-50/60">
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-semibold text-gray-800">{label}</h2>
-          {!isPreview && (
+          {viewMode !== 'preview' && (
             <span className="text-xs text-gray-400 tabular-nums">{lineCount} lines</span>
           )}
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Preview / Raw 토글 */}
+          {/* 토글 */}
           <div className="flex items-center border border-gray-200 rounded-lg p-0.5 bg-gray-100 gap-0.5">
-            <button
-              onClick={() => setIsPreview(true)}
-              className={`px-3 py-1 text-xs rounded-md transition-all font-medium ${
-                isPreview
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              Preview
-            </button>
-            <button
-              onClick={() => setIsPreview(false)}
-              className={`px-3 py-1 text-xs rounded-md transition-all font-medium ${
-                !isPreview
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              Raw
-            </button>
+            {tabs.map((tab) => (
+              <button
+                key={tab.mode}
+                onClick={() => setViewMode(tab.mode)}
+                className={`px-3 py-1 text-xs rounded-md transition-all font-medium ${
+                  viewMode === tab.mode
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
 
-          {/* Copy — showCopy=true 일 때만 표시 (Review 단계) */}
+          {/* Copy — Review 단(showCopy=true)에서만 표시 */}
           {showCopy && (
             <button
               onClick={handleCopy}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-              title="Copy raw markdown"
+              title={`Copy ${viewMode === 'markdown' ? 'markdown' : 'HTML'}`}
             >
               {copied ? (
                 <>
@@ -193,7 +240,7 @@ export default function ArticleDraftContentSection({
               ) : (
                 <>
                   <Copy className="w-3.5 h-3.5" />
-                  Copy
+                  Copy {viewMode === 'markdown' ? 'MD' : 'HTML'}
                 </>
               )}
             </button>
@@ -202,14 +249,14 @@ export default function ArticleDraftContentSection({
       </div>
 
       {/* Body */}
-      {isPreview ? (
+      {viewMode === 'preview' && (
         <MarkdownPreview content={content} thumbnailImageUrl={thumbnailImageUrl} />
-      ) : (
-        <div className="overflow-x-auto">
-          <pre className="px-6 py-5 text-sm text-gray-700 leading-relaxed font-mono whitespace-pre-wrap break-words">
-            {content}
-          </pre>
-        </div>
+      )}
+      {viewMode === 'markdown' && (
+        <SourceView text={content} />
+      )}
+      {viewMode === 'html' && (
+        <SourceView text={htmlContent} />
       )}
     </div>
   );
