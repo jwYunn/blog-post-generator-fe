@@ -1,11 +1,12 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { RefreshCw, Copy, Check } from 'lucide-react';
 import { articleDraftApi } from '../api/articleDrafts';
 import type { ArticleDraftListParams, ArticleDraftStatus } from '../types/articleDraft';
 import { IN_PROGRESS_STATUSES } from '../types/articleDraft';
 import ArticleDraftStatusBadge from '../components/article-draft/ArticleDraftStatusBadge';
+import PublishModal from '../components/article-draft/PublishModal';
 
 // ─── 인라인 해시태그 복사 버튼 ────────────────────────────────────────────────
 
@@ -17,7 +18,7 @@ function InlineHashtags({ hashtags }: { hashtags: string[] | null }) {
   const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      await navigator.clipboard.writeText(hashtags.join(' '));
+      await navigator.clipboard.writeText(hashtags.map((t) => t.replace(/^#/, '')).join('\t'));
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -108,6 +109,8 @@ function SkeletonRow({ index }: { index: number }) {
 
 export default function ArticleDraftListPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
   const [params, setParams] = useState<ArticleDraftListParams>({
     page: 1,
     limit: 20,
@@ -129,6 +132,12 @@ export default function ArticleDraftListPage() {
   const handleStatusFilter = useCallback((status: ArticleDraftStatus | undefined) => {
     setParams((prev) => ({ ...prev, status, page: 1 }));
   }, []);
+
+  const [publishModal, setPublishModal] = useState<{
+    open: boolean;
+    draftId: string;
+    draftTitle: string;
+  } | null>(null);
 
   const handleRowClick = (id: string) => {
     navigate(`/article-drafts/${id}`);
@@ -205,6 +214,9 @@ export default function ArticleDraftListPage() {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider min-w-[110px]">
                   Created
                 </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider min-w-[120px]">
+                  Actions
+                </th>
               </tr>
             </thead>
 
@@ -213,7 +225,7 @@ export default function ArticleDraftListPage() {
                 Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} index={i} />)
               ) : isError ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-20 text-center">
+                  <td colSpan={5} className="px-4 py-20 text-center">
                     <div className="flex flex-col items-center gap-3">
                       <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center">
                         <RefreshCw className="w-5 h-5 text-red-400" />
@@ -230,7 +242,7 @@ export default function ArticleDraftListPage() {
                 </tr>
               ) : drafts.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-20 text-center">
+                  <td colSpan={5} className="px-4 py-20 text-center">
                     <div className="flex flex-col items-center gap-2">
                       <span className="text-4xl">📄</span>
                       <p className="text-gray-500 text-sm mt-1">No article drafts found</p>
@@ -270,6 +282,25 @@ export default function ArticleDraftListPage() {
                     <td className="px-4 py-4 text-gray-500 tabular-nums text-xs">
                       {formatRelativeTime(draft.createdAt)}
                     </td>
+
+                    {/* Actions */}
+                    <td className="px-4 py-4">
+                      {draft.status === 'review_ready' && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPublishModal({
+                              open: true,
+                              draftId: draft.id,
+                              draftTitle: draft.title,
+                            });
+                          }}
+                          className="px-3 py-1.5 text-xs font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-40 transition-colors"
+                        >
+                          Publish
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))
               )}
@@ -286,6 +317,18 @@ export default function ArticleDraftListPage() {
             : `${drafts.length} of ${data?.total ?? 0}`}
         </p>
       )}
+
+      {/* Publish Modal */}
+      <PublishModal
+        open={!!publishModal?.open}
+        draftId={publishModal?.draftId ?? ''}
+        draftTitle={publishModal?.draftTitle ?? ''}
+        onClose={() => setPublishModal(null)}
+        onSuccess={() => {
+          setPublishModal(null);
+          queryClient.invalidateQueries({ queryKey: ['article-drafts'] });
+        }}
+      />
     </main>
   );
 }
