@@ -49,6 +49,18 @@ const STATUS_CONFIG: Record<
     bgClass: 'bg-emerald-50',
     textClass: 'text-emerald-700',
   },
+  publishing: {
+    label: 'Publishing',
+    dotClass: 'bg-purple-500',
+    bgClass: 'bg-purple-50',
+    textClass: 'text-purple-700',
+  },
+  published: {
+    label: 'Published',
+    dotClass: 'bg-green-500',
+    bgClass: 'bg-green-50',
+    textClass: 'text-green-700',
+  },
   failed: {
     label: 'Failed',
     dotClass: 'bg-red-500',
