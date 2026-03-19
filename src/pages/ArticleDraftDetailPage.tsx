@@ -1,16 +1,17 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, AlertTriangle, RefreshCw } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, AlertTriangle, RefreshCw, Copy, Check, ExternalLink, Send } from 'lucide-react';
 import { articleDraftApi } from '../api/articleDrafts';
 import { IN_PROGRESS_STATUSES } from '../types/articleDraft';
-import type { ArticleDraft } from '../types/articleDraft';
+import type { ArticleDraft, PublishRecord } from '../types/articleDraft';
 import ArticleDraftStatusBadge from '../components/article-draft/ArticleDraftStatusBadge';
 import ArticleDraftPipeline from '../components/article-draft/ArticleDraftPipeline';
 import type { StepKey } from '../components/article-draft/ArticleDraftPipeline';
 import ArticleDraftOutlineSection from '../components/article-draft/ArticleDraftOutlineSection';
 import ArticleDraftContentSection from '../components/article-draft/ArticleDraftContentSection';
 import HashtagsSection from '../components/article-draft/HashtagsSection';
+import PublishModal from '../components/article-draft/PublishModal';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -22,6 +23,89 @@ function formatDate(dateStr: string): string {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+// ─── Publish Records Section ──────────────────────────────────────────────────
+
+function PublishRecordsSection({ records }: { records: PublishRecord[] }) {
+  if (records.length === 0) return null;
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="flex items-center gap-2 px-6 py-4 border-b border-gray-100 bg-gray-50/60">
+        <Send className="w-4 h-4 text-green-600" />
+        <h2 className="text-sm font-semibold text-gray-800">발행 내역</h2>
+        <span className="text-xs text-gray-400 tabular-nums">{records.length}건</span>
+      </div>
+      <ul className="divide-y divide-gray-50">
+        {records.map((rec) => (
+          <li key={rec.id} className="px-6 py-4">
+            <div className="flex items-start justify-between gap-4">
+              {/* Permalink */}
+              <div className="flex-1 min-w-0">
+                {rec.permalink ? (
+                  <a
+                    href={rec.permalink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 hover:underline truncate max-w-full"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span className="truncate">{rec.permalink}</span>
+                  </a>
+                ) : (
+                  <span className="text-sm text-gray-400">–</span>
+                )}
+
+                {/* Schedule 정보 */}
+                {rec.schedule && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    {rec.schedule.mode === 'now'
+                      ? '즉시 발행'
+                      : `예약 발행 · ${formatDate(rec.schedule.scheduledAt)}`}
+                  </p>
+                )}
+              </div>
+
+              {/* createdAt */}
+              <span className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">
+                {formatDate(rec.createdAt)}
+              </span>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// ─── Title with copy button ────────────────────────────────────────────────────
+
+function TitleWithCopy({ title }: { title: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(title);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // clipboard not available
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <h1 className="text-lg font-bold text-gray-900 leading-snug">{title}</h1>
+      <button
+        onClick={handleCopy}
+        title="Copy title"
+        className="flex-shrink-0 flex items-center justify-center w-7 h-7 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+      >
+        {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+      </button>
+    </div>
+  );
 }
 
 // ─── Thumbnail view (Thumbnail 단계 선택 시) ──────────────────────────────────
@@ -155,8 +239,10 @@ function StepContent({
 export default function ArticleDraftDetailPage() {
   const { id }   = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const [selectedStep, setSelectedStep] = useState<StepKey | null>(null);
+  const [publishModalOpen, setPublishModalOpen] = useState(false);
 
   const { data: draft, isLoading, isError, refetch } = useQuery({
     queryKey: ['article-draft', id],
@@ -167,6 +253,15 @@ export default function ArticleDraftDetailPage() {
       return status && IN_PROGRESS_STATUSES.includes(status) ? 3_000 : false;
     },
   });
+
+  // 발행 내역 (published 상태일 때만 조회)
+  const { data: publishRecordsData } = useQuery({
+    queryKey: ['article-draft-publish-records', id],
+    queryFn:  () => articleDraftApi.getPublishRecords(id!),
+    enabled:  !!id && draft?.status === 'published',
+    staleTime: 30_000,
+  });
+  const publishRecords: PublishRecord[] = publishRecordsData?.data ?? [];
 
   // 현재 데이터가 있는 단계 목록
   const availableSteps = useMemo<StepKey[]>(() => {
@@ -231,10 +326,21 @@ export default function ArticleDraftDetailPage() {
         <div className="bg-white rounded-xl border border-gray-200 px-6 py-5">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1 min-w-0">
-              <h1 className="text-lg font-bold text-gray-900 leading-snug">{draft.title}</h1>
+              <TitleWithCopy title={draft.title} />
               <p className="text-sm text-gray-400 mt-1">{draft.keyword}</p>
             </div>
-            <ArticleDraftStatusBadge status={draft.status} />
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {draft.status === 'review_ready' && (
+                <button
+                  onClick={() => setPublishModalOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  Publish
+                </button>
+              )}
+              <ArticleDraftStatusBadge status={draft.status} />
+            </div>
           </div>
 
           <div className="flex items-center gap-4 mt-4 pt-4 border-t border-gray-50 text-xs text-gray-400">
@@ -280,7 +386,24 @@ export default function ArticleDraftDetailPage() {
           selectedStep={selectedStep}
           isInProgress={isInProgress}
         />
+
+        {/* ── 발행 내역 (published 상태) ──────────────────────────────────── */}
+        {draft.status === 'published' && publishRecords.length > 0 && (
+          <PublishRecordsSection records={publishRecords} />
+        )}
       </div>
+
+      {/* Publish Modal */}
+      <PublishModal
+        open={publishModalOpen}
+        draftId={draft.id}
+        draftTitle={draft.title}
+        onClose={() => setPublishModalOpen(false)}
+        onSuccess={() => {
+          setPublishModalOpen(false);
+          queryClient.invalidateQueries({ queryKey: ['article-draft', id] });
+        }}
+      />
     </main>
   );
 }
