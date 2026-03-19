@@ -8,6 +8,8 @@ export type ArticleDraftStatus =
   | 'content_generated'
   | 'generating_thumbnail'
   | 'review_ready'
+  | 'publishing'
+  | 'published'
   | 'failed';
 
 // 파이프라인이 아직 진행 중인 상태 (polling 트리거)
@@ -18,6 +20,7 @@ export const IN_PROGRESS_STATUSES: ArticleDraftStatus[] = [
   'generating_content',
   'content_generated',
   'generating_thumbnail',
+  'publishing',
 ];
 
 // ─── Outline ─────────────────────────────────────────────────────────────────
@@ -54,6 +57,24 @@ export interface PaginatedArticleDrafts {
   total: number;
   page: number;
   limit: number;
+}
+
+// ─── Publish ──────────────────────────────────────────────────────────────────
+
+export type PublishJobMode = 'now' | 'schedule';
+
+export interface CreatePublishJobDto {
+  mode: PublishJobMode;
+  scheduledAt?: string;
+}
+
+export interface PublishRecord {
+  id: string;
+  draftId: string;
+  permalink: string | null;
+  schedule: { mode: 'now' } | { mode: 'schedule'; scheduledAt: string } | null;
+  meta: Record<string, unknown> | null;
+  createdAt: string;
 }
 
 export interface ArticleDraftListParams {
