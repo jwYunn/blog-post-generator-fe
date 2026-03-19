@@ -3,6 +3,8 @@ import type {
   ArticleDraft,
   ArticleDraftListParams,
   PaginatedArticleDrafts,
+  CreatePublishJobDto,
+  PublishRecord,
 } from '../types/articleDraft';
 
 const api = axios.create({
@@ -18,6 +20,29 @@ export const articleDraftApi = {
 
   getOne: async (id: string): Promise<ArticleDraft> => {
     const { data } = await api.get<ArticleDraft>(`/article-drafts/${id}`);
+    return data;
+  },
+
+  publishDraft: async (
+    id: string,
+    dto: CreatePublishJobDto,
+  ): Promise<{ jobId: string }> => {
+    const { data } = await api.post<{ jobId: string }>(
+      `/article-drafts/${id}/publish`,
+      dto,
+    );
+    return data;
+  },
+
+  getPublishRecords: async (
+    draftId: string,
+  ): Promise<{ data: PublishRecord[]; total: number; page: number; limit: number }> => {
+    const { data } = await api.get<{
+      data: PublishRecord[];
+      total: number;
+      page: number;
+      limit: number;
+    }>(`/article-drafts/${draftId}/publish-records`);
     return data;
   },
 };
