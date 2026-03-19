@@ -34,8 +34,8 @@ function PublishRecordsSection({ records }: { records: PublishRecord[] }) {
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
       <div className="flex items-center gap-2 px-6 py-4 border-b border-gray-100 bg-gray-50/60">
         <Send className="w-4 h-4 text-green-600" />
-        <h2 className="text-sm font-semibold text-gray-800">발행 내역</h2>
-        <span className="text-xs text-gray-400 tabular-nums">{records.length}건</span>
+        <h2 className="text-sm font-semibold text-gray-800">Publish Records</h2>
+        <span className="text-xs text-gray-400 tabular-nums">{records.length}</span>
       </div>
       <ul className="divide-y divide-gray-50">
         {records.map((rec) => (
@@ -61,8 +61,8 @@ function PublishRecordsSection({ records }: { records: PublishRecord[] }) {
                 {rec.schedule && (
                   <p className="text-xs text-gray-400 mt-1">
                     {rec.schedule.mode === 'now'
-                      ? '즉시 발행'
-                      : `예약 발행 · ${formatDate(rec.schedule.scheduledAt)}`}
+                      ? 'Immediate'
+                      : `Scheduled · ${formatDate(rec.schedule.scheduledAt)}`}
                   </p>
                 )}
               </div>
@@ -359,36 +359,41 @@ export default function ArticleDraftDetailPage() {
           )}
         </div>
 
-        {/* ── Pipeline (클릭 가능) ─────────────────────────────────────────── */}
-        <ArticleDraftPipeline
-          status={draft.status}
-          selectedStep={selectedStep}
-          availableSteps={availableSteps}
-          onSelectStep={setSelectedStep}
-        />
+        {/* ── published 상태가 아닐 때만 Pipeline / StepContent 표시 ──────── */}
+        {draft.status !== 'published' && (
+          <>
+            {/* ── Pipeline (클릭 가능) ──────────────────────────────────────── */}
+            <ArticleDraftPipeline
+              status={draft.status}
+              selectedStep={selectedStep}
+              availableSteps={availableSteps}
+              onSelectStep={setSelectedStep}
+            />
 
-        {/* ── Error section (failed 일 때만) ───────────────────────────────── */}
-        {draft.status === 'failed' && draft.errorMessage && (
-          <div className="bg-white rounded-xl border border-red-200 overflow-hidden">
-            <div className="flex items-center gap-3 px-6 py-4 bg-red-50 border-b border-red-100">
-              <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" />
-              <h2 className="text-sm font-semibold text-red-700">Generation Error</h2>
-            </div>
-            <div className="px-6 py-4">
-              <p className="text-sm text-red-600 leading-relaxed">{draft.errorMessage}</p>
-            </div>
-          </div>
+            {/* ── Error section (failed 일 때만) ────────────────────────────── */}
+            {draft.status === 'failed' && draft.errorMessage && (
+              <div className="bg-white rounded-xl border border-red-200 overflow-hidden">
+                <div className="flex items-center gap-3 px-6 py-4 bg-red-50 border-b border-red-100">
+                  <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" />
+                  <h2 className="text-sm font-semibold text-red-700">Generation Error</h2>
+                </div>
+                <div className="px-6 py-4">
+                  <p className="text-sm text-red-600 leading-relaxed">{draft.errorMessage}</p>
+                </div>
+              </div>
+            )}
+
+            {/* ── 선택된 단계의 콘텐츠 ──────────────────────────────────────── */}
+            <StepContent
+              draft={draft}
+              selectedStep={selectedStep}
+              isInProgress={isInProgress}
+            />
+          </>
         )}
 
-        {/* ── 선택된 단계의 콘텐츠 ────────────────────────────────────────── */}
-        <StepContent
-          draft={draft}
-          selectedStep={selectedStep}
-          isInProgress={isInProgress}
-        />
-
-        {/* ── 발행 내역 (published 상태) ──────────────────────────────────── */}
-        {draft.status === 'published' && publishRecords.length > 0 && (
+        {/* ── Publish Records (published 상태) ────────────────────────────── */}
+        {draft.status === 'published' && (
           <PublishRecordsSection records={publishRecords} />
         )}
       </div>
