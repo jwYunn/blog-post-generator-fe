@@ -6,15 +6,26 @@ interface Props {
 }
 
 export default function HashtagsSection({ hashtags }: Props) {
-  const [copied, setCopied] = useState(false);
+  const [copiedAll, setCopiedAll] = useState(false);
+  const [copiedTag, setCopiedTag] = useState<string | null>(null);
 
   if (!hashtags || hashtags.length === 0) return null;
 
-  const handleCopy = async () => {
+  const handleCopyAll = async () => {
     try {
-      await navigator.clipboard.writeText(hashtags.join(' '));
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      await navigator.clipboard.writeText(hashtags.map((t) => t.replace(/^#/, '')).join('\t'));
+      setCopiedAll(true);
+      setTimeout(() => setCopiedAll(false), 2000);
+    } catch {
+      // clipboard not available
+    }
+  };
+
+  const handleCopyTag = async (tag: string) => {
+    try {
+      await navigator.clipboard.writeText(tag.replace(/^#/, ''));
+      setCopiedTag(tag);
+      setTimeout(() => setCopiedTag(null), 2000);
     } catch {
       // clipboard not available
     }
@@ -26,11 +37,11 @@ export default function HashtagsSection({ hashtags }: Props) {
       <div className="flex items-center justify-between px-6 py-3.5 border-b border-gray-100 bg-gray-50/60">
         <h2 className="text-sm font-semibold text-gray-800">Hashtags</h2>
         <button
-          onClick={handleCopy}
+          onClick={handleCopyAll}
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
           title="Copy all hashtags as a single line"
         >
-          {copied ? (
+          {copiedAll ? (
             <>
               <Check className="w-3.5 h-3.5 text-green-500" />
               <span className="text-green-600">Copied</span>
@@ -38,7 +49,7 @@ export default function HashtagsSection({ hashtags }: Props) {
           ) : (
             <>
               <Copy className="w-3.5 h-3.5" />
-              Copy
+              Copy All
             </>
           )}
         </button>
@@ -46,14 +57,24 @@ export default function HashtagsSection({ hashtags }: Props) {
 
       {/* Pills */}
       <div className="px-6 py-4 flex flex-wrap gap-2">
-        {hashtags.map((tag) => (
-          <span
-            key={tag}
-            className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100"
-          >
-            {tag}
-          </span>
-        ))}
+        {hashtags.map((tag) => {
+          const isCopied = copiedTag === tag;
+          return (
+            <button
+              key={tag}
+              onClick={() => handleCopyTag(tag)}
+              title={`Copy ${tag}`}
+              className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
+                isCopied
+                  ? 'bg-green-50 text-green-700 border-green-200'
+                  : 'bg-blue-50 text-blue-700 border-blue-100 hover:bg-blue-100 hover:border-blue-200'
+              }`}
+            >
+              {isCopied ? <Check className="w-3 h-3" /> : null}
+              {tag}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
