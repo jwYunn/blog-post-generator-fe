@@ -11,6 +11,19 @@ export interface PublishRecordListParams {
   limit?: number;
 }
 
+export interface CreatePublishRecordPayload {
+  draftId: string;
+  permalink?: string | null;
+  schedule?: { mode: 'now' } | { mode: 'schedule'; scheduledAt: string } | null;
+  meta?: Record<string, unknown> | null;
+}
+
+export interface UpdatePublishRecordPayload {
+  permalink?: string | null;
+  schedule?: { mode: 'now' } | { mode: 'schedule'; scheduledAt: string } | null;
+  meta?: Record<string, unknown> | null;
+}
+
 export const publishRecordsApi = {
   getList: async (
     params: PublishRecordListParams,
@@ -22,5 +35,22 @@ export const publishRecordsApi = {
       limit: number;
     }>('/article-publish-records', { params });
     return data;
+  },
+
+  create: async (payload: CreatePublishRecordPayload): Promise<PublishRecord> => {
+    const { data } = await api.post<PublishRecord>('/article-publish-records', payload);
+    return data;
+  },
+
+  update: async (id: string, payload: UpdatePublishRecordPayload): Promise<PublishRecord> => {
+    const { data } = await api.patch<PublishRecord>(
+      `/article-publish-records/${id}`,
+      payload,
+    );
+    return data;
+  },
+
+  remove: async (id: string): Promise<void> => {
+    await api.delete(`/article-publish-records/${id}`);
   },
 };
