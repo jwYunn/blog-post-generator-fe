@@ -15,7 +15,7 @@ import { useToast } from '../hooks/useToast';
 
 // ─── 상수 ─────────────────────────────────────────────────────────────────────
 
-type SortableColumn = 'createdAt' | 'score';
+type SortableColumn = NonNullable<TopicCandidateListParams['sortBy']>;
 
 const CATEGORY_LABELS: Record<TopicSeedCategory, string> = {
   meaning: 'Meaning',

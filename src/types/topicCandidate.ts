@@ -51,7 +51,7 @@ export interface TopicCandidateListParams {
   keyword?: string;
   minScore?: number;
   maxScore?: number;
-  sortBy?: 'createdAt' | 'score';
+  sortBy?: 'createdAt' | 'score' | 'overallScore' | 'rank';
   sortOrder?: 'ASC' | 'DESC';
 }
 

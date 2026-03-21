@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { RefreshCw, Info, X, Tag, Target, Calendar, BookOpen, FlaskConical, TrendingUp, TrendingDown } from 'lucide-react';
+import { RefreshCw, Info, X, Tag, Target, Calendar, BookOpen, FlaskConical, TrendingUp, TrendingDown, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import type { TopicCandidate, TopicCandidateListParams, TopicCandidateStatus, EvaluationDetail } from '../../types/topicCandidate';
 
 // ─── 상수 ─────────────────────────────────────────────────────────────────────
@@ -333,13 +333,15 @@ function EvaluationModal({ candidate, onClose }: { candidate: TopicCandidate; on
 
 // ─── Props ─────────────────────────────────────────────────────────────────────
 
+type SortableColumn = NonNullable<TopicCandidateListParams['sortBy']>;
+
 interface Props {
   data: TopicCandidate[];
   isLoading: boolean;
   isFetching: boolean;
   isError: boolean;
   params: TopicCandidateListParams;
-  onSort: (sortBy: 'createdAt') => void;
+  onSort: (sortBy: SortableColumn) => void;
   onRetry: () => void;
 }
 
@@ -350,14 +352,21 @@ export default function TopicCandidateTable({
   isLoading,
   isFetching,
   isError,
-  params: _params,
-  onSort: _onSort,
+  params,
+  onSort,
   onRetry,
 }: Props) {
   const [detailCandidate, setDetailCandidate] = useState<TopicCandidate | null>(null);
   const [evalCandidate, setEvalCandidate] = useState<TopicCandidate | null>(null);
 
   const COL_SPAN = 9;
+
+  function SortIcon({ column }: { column: SortableColumn }) {
+    if (params.sortBy !== column) return <ArrowUpDown className="w-3 h-3 text-gray-300" />;
+    return params.sortOrder === 'ASC'
+      ? <ArrowUp className="w-3 h-3 text-blue-500" />
+      : <ArrowDown className="w-3 h-3 text-blue-500" />;
+  }
 
   return (
     <>
@@ -375,8 +384,6 @@ export default function TopicCandidateTable({
                   { label: 'Title',         className: 'min-w-[240px]' },
                   { label: 'Search Intent', className: 'min-w-[120px]' },
                   { label: 'Reader' },
-                  { label: 'Score',   className: 'min-w-[64px]' },
-                  { label: 'Rank',    className: 'min-w-[56px]' },
                   { label: 'Verdict', className: 'min-w-[90px]' },
                   { label: 'Status' },
                   { label: '' },
@@ -389,6 +396,26 @@ export default function TopicCandidateTable({
                     {h.label}
                   </th>
                 ))}
+                {/* Score — 정렬 가능 */}
+                <th className="px-4 py-3 min-w-[72px]">
+                  <button
+                    onClick={() => onSort('overallScore')}
+                    className="flex items-center gap-1 text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-gray-800 transition-colors"
+                  >
+                    Score
+                    <SortIcon column="overallScore" />
+                  </button>
+                </th>
+                {/* Rank — 정렬 가능 */}
+                <th className="px-4 py-3 min-w-[64px]">
+                  <button
+                    onClick={() => onSort('rank')}
+                    className="flex items-center gap-1 text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-gray-800 transition-colors"
+                  >
+                    Rank
+                    <SortIcon column="rank" />
+                  </button>
+                </th>
               </tr>
             </thead>
 
@@ -461,28 +488,6 @@ export default function TopicCandidateTable({
                         )}
                       </td>
 
-                      {/* Score */}
-                      <td className="px-4 py-3.5">
-                        {isEvaluated ? (
-                          <span className="text-sm font-semibold text-gray-800 tabular-nums">
-                            {Number(candidate.overallScore).toFixed(1)}
-                          </span>
-                        ) : (
-                          <span className="text-gray-300">—</span>
-                        )}
-                      </td>
-
-                      {/* Rank */}
-                      <td className="px-4 py-3.5">
-                        {isEvaluated && candidate.rank != null ? (
-                          <span className="text-xs font-bold text-gray-500 tabular-nums">
-                            #{candidate.rank}
-                          </span>
-                        ) : (
-                          <span className="text-gray-300">—</span>
-                        )}
-                      </td>
-
                       {/* Verdict */}
                       <td className="px-4 py-3.5">
                         {verdictStyle && verdict ? (
@@ -531,6 +536,28 @@ export default function TopicCandidateTable({
                           <FlaskConical className="w-3.5 h-3.5" />
                           Eval
                         </button>
+                      </td>
+
+                      {/* Score */}
+                      <td className="px-4 py-3.5">
+                        {isEvaluated ? (
+                          <span className="text-sm font-semibold text-gray-800 tabular-nums">
+                            {Number(candidate.overallScore).toFixed(1)}
+                          </span>
+                        ) : (
+                          <span className="text-gray-300">—</span>
+                        )}
+                      </td>
+
+                      {/* Rank */}
+                      <td className="px-4 py-3.5">
+                        {isEvaluated && candidate.rank != null ? (
+                          <span className="text-xs font-bold text-gray-500 tabular-nums">
+                            #{candidate.rank}
+                          </span>
+                        ) : (
+                          <span className="text-gray-300">—</span>
+                        )}
                       </td>
                     </tr>
                   );
