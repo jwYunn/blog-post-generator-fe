@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import axios from 'axios';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
 import { topicSeedApi } from '../api/topicSeed';
 import type { TopicSeed, TopicSeedListParams } from '../types/topicSeed';
@@ -35,9 +34,7 @@ export default function TopicSeedPage() {
     open: false,
   });
 
-  // ─── Generate 상태 (row별 독립 로딩) ────────────────────────────────────────
-  const [generatingSeedIds, setGeneratingSeedIds] = useState<Record<string, boolean>>({});
-  const { toasts, addToast, removeToast } = useToast();
+  const { toasts, removeToast } = useToast();
 
   // ─── 데이터 패칭 ─────────────────────────────────────────────────────────────
   const { data, isLoading, isFetching, isError, refetch } = useQuery({
@@ -65,31 +62,6 @@ export default function TopicSeedPage() {
 
   const invalidateList = () => {
     queryClient.invalidateQueries({ queryKey: ['topic-seeds'] });
-  };
-
-  // ─── Generate mutation ───────────────────────────────────────────────────────
-  const generateMutation = useMutation({
-    mutationFn: (seedId: string) => topicSeedApi.generate(seedId),
-    onMutate: (seedId) => {
-      setGeneratingSeedIds((prev) => ({ ...prev, [seedId]: true }));
-    },
-    onSuccess: (_data, seedId) => {
-      setGeneratingSeedIds((prev) => ({ ...prev, [seedId]: false }));
-      addToast('Generate job queued.');
-    },
-    onError: (error, seedId) => {
-      setGeneratingSeedIds((prev) => ({ ...prev, [seedId]: false }));
-      const message =
-        axios.isAxiosError(error)
-          ? (error.response?.data?.message ?? 'Failed to queue generate job.')
-          : 'Failed to queue generate job.';
-      addToast(message, 'error');
-    },
-  });
-
-  const handleGenerate = (seedId: string) => {
-    if (generatingSeedIds[seedId]) return;
-    generateMutation.mutate(seedId);
   };
 
   // ─── 렌더 ────────────────────────────────────────────────────────────────────
@@ -127,8 +99,6 @@ export default function TopicSeedPage() {
           onEdit={(seed) => setFormModal({ open: true, seed })}
           onDelete={(seed) => setDeleteDialog({ open: true, seed })}
           onRetry={refetch}
-          onGenerate={handleGenerate}
-          generatingSeedIds={generatingSeedIds}
         />
 
         {/* 페이지네이션 */}

@@ -7,6 +7,10 @@ export interface TopicCandidate {
   keyword: string;
   score: number;
   status: TopicCandidateStatus;
+  searchIntent: string | null;
+  targetReader: string | null;
+  whyThisTopic: string | null;
+  outlinePreview: string[] | null;
   createdAt: string;
   updatedAt: string;
 }

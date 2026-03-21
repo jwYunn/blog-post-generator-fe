@@ -1,4 +1,4 @@
-import { ChevronsUpDown, ChevronUp, ChevronDown, Pencil, Trash2, RefreshCw, Sparkles } from 'lucide-react';
+import { ChevronsUpDown, ChevronUp, ChevronDown, Pencil, Trash2, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { TopicSeed, TopicSeedListParams } from '../../types/topicSeed';
 
@@ -93,8 +93,6 @@ interface Props {
   onEdit: (seed: TopicSeed) => void;
   onDelete: (seed: TopicSeed) => void;
   onRetry: () => void;
-  onGenerate: (seedId: string) => void;
-  generatingSeedIds: Record<string, boolean>;
 }
 
 // ─── 메인 컴포넌트 ──────────────────────────────────────────────────────────────
@@ -109,8 +107,6 @@ export default function TopicSeedTable({
   onEdit,
   onDelete,
   onRetry,
-  onGenerate,
-  generatingSeedIds,
 }: Props) {
   const navigate = useNavigate();
 
@@ -122,7 +118,7 @@ export default function TopicSeedTable({
     { key: 'usedCount', label: 'Used', sortable: 'usedCount' },
     { key: 'lastUsedAt', label: 'Last Used', className: 'min-w-[100px]' },
     { key: 'createdAt', label: 'Created', sortable: 'createdAt', className: 'min-w-[100px]' },
-    { key: 'actions', label: '', className: 'w-36' },
+    { key: 'actions', label: '', className: 'w-24' },
   ];
 
   return (
@@ -251,43 +247,21 @@ export default function TopicSeedTable({
 
                   {/* 액션 */}
                   <td className="px-4 py-3.5">
-                    <div className="flex items-center gap-2">
-                      {/* Generate 버튼 */}
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
-                        onClick={(e) => { e.stopPropagation(); onGenerate(seed.id); }}
-                        disabled={!seed.isActive || generatingSeedIds[seed.id]}
-                        title={!seed.isActive ? 'Cannot generate for inactive seeds' : 'Generate candidates'}
-                        className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                          seed.isActive && !generatingSeedIds[seed.id]
-                            ? 'text-violet-700 bg-violet-50 hover:bg-violet-100'
-                            : 'text-gray-400 bg-gray-100 cursor-not-allowed'
-                        }`}
+                        onClick={(e) => { e.stopPropagation(); onEdit(seed); }}
+                        title="Edit"
+                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                       >
-                        {generatingSeedIds[seed.id] ? (
-                          <span className="w-3 h-3 border-2 border-violet-300 border-t-violet-600 rounded-full animate-spin" />
-                        ) : (
-                          <Sparkles className="w-3 h-3" />
-                        )}
-                        Generate
+                        <Pencil className="w-4 h-4" />
                       </button>
-
-                      {/* Edit / Delete — hover 시 표시 */}
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); onEdit(seed); }}
-                          title="Edit"
-                          className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); onDelete(seed); }}
-                          title="Delete"
-                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onDelete(seed); }}
+                        title="Delete"
+                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </td>
                 </tr>

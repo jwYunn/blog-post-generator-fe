@@ -1,9 +1,8 @@
 import { Outlet, NavLink } from 'react-router-dom';
-import { Sprout, ListTree, FileText, Globe } from 'lucide-react';
+import { Sprout, FileText, Globe, NotebookPen } from 'lucide-react';
 
 const NAV_ITEMS = [
   { to: '/topic-seeds',      label: 'Topic Seeds',     icon: Sprout   },
-  { to: '/topic-candidates', label: 'Candidates',      icon: ListTree },
   { to: '/article-drafts',   label: 'Article Drafts',  icon: FileText },
   { to: '/publish-history',  label: 'Publish History', icon: Globe    },
 ] as const;
@@ -14,8 +13,8 @@ export default function Layout() {
       <header className="bg-white border-b border-gray-200 flex items-center px-8">
         {/* 로고 */}
         <div className="flex items-center gap-2 py-3.5 pr-8 border-r border-gray-100 flex-shrink-0">
-          <Sprout className="w-4 h-4 text-blue-600" />
-          <span className="font-semibold text-sm text-gray-700">Blog Post Generator</span>
+          <NotebookPen className="w-4 h-4 text-blue-600" />
+          <span className="font-semibold text-sm text-gray-700">Blog Article Generator</span>
         </div>
 
         {/* 네비게이션 */}

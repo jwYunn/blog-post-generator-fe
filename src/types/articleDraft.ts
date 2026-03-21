@@ -71,6 +71,11 @@ export interface CreatePublishJobDto {
 export interface PublishRecord {
   id: string;
   draftId: string;
+  draft?: {
+    id: string;
+    title: string;
+    status: ArticleDraftStatus;
+  };
   permalink: string | null;
   schedule: { mode: 'now' } | { mode: 'schedule'; scheduledAt: string } | null;
   meta: Record<string, unknown> | null;

@@ -9,22 +9,23 @@ import { useToast } from '../hooks/useToast';
 import ToastContainer from '../components/Toast';
 import PublishRecordFormModal from '../components/article-draft/PublishRecordFormModal';
 
-// ─── 상수 ─────────────────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const LIMIT = 20;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function formatDate(dateStr: string): string {
-  const d = new Date(dateStr);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return (
-    `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())} ` +
-    `${pad(d.getHours())}:${pad(d.getMinutes())}`
-  );
+  return new Date(dateStr).toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
-/** URL에서 프로토콜·슬래시 제거: "https://example.com/65" → "example.com/65" */
+/** Strips protocol prefix: "https://example.com/65" → "example.com/65" */
 function stripProtocol(url: string): string {
   return url.replace(/^https?:\/\//, '');
 }
@@ -57,7 +58,7 @@ function ScheduleCell({ record }: { record: PublishRecord }) {
   if (record.schedule.mode === 'now') {
     return (
       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
-        즉시 발행
+        Immediate
       </span>
     );
   }
@@ -65,7 +66,7 @@ function ScheduleCell({ record }: { record: PublishRecord }) {
   return (
     <div>
       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700">
-        예약 발행
+        Scheduled
       </span>
       <p className="text-xs text-gray-400 mt-1">
         {formatDate(record.schedule.scheduledAt)}
@@ -93,24 +94,24 @@ function DeleteConfirmDialog({
       <div className="fixed inset-0 flex items-center justify-center p-4">
         <DialogPanel className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
           <DialogTitle className="text-base font-semibold text-gray-900 mb-2">
-            발행 내역 삭제
+            Delete Publish Record
           </DialogTitle>
           <p className="text-sm text-gray-500 mb-6">
-            이 발행 내역을 삭제하면 복구할 수 없습니다. 계속하시겠습니까?
+            This action cannot be undone. Are you sure you want to delete this record?
           </p>
           <div className="flex items-center justify-end gap-3">
             <button
               onClick={onClose}
               className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
             >
-              취소
+              Cancel
             </button>
             <button
               onClick={onConfirm}
               disabled={isPending}
               className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-60 transition-colors"
             >
-              {isPending ? '삭제 중...' : '삭제'}
+              {isPending ? 'Deleting…' : 'Delete'}
             </button>
           </div>
         </DialogPanel>
@@ -126,13 +127,13 @@ export default function PublishHistoryPage() {
   const { toasts, addToast, removeToast } = useToast();
   const [page, setPage] = useState(1);
 
-  // form modal 상태
+  // form modal state
   const [formModal, setFormModal] = useState<{
     open: boolean;
     record?: PublishRecord;
   }>({ open: false });
 
-  // delete confirm 상태
+  // delete confirm state
   const [deleteTarget, setDeleteTarget] = useState<PublishRecord | null>(null);
 
   const { data, isLoading } = useQuery({
@@ -144,12 +145,12 @@ export default function PublishHistoryPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => publishRecordsApi.remove(id),
     onSuccess: () => {
-      addToast('발행 내역이 삭제되었습니다.');
+      addToast('Publish record deleted.');
       setDeleteTarget(null);
       queryClient.invalidateQueries({ queryKey: ['publish-records'] });
     },
     onError: () => {
-      addToast('삭제에 실패했습니다. 다시 시도해주세요.', 'error');
+      addToast('Failed to delete. Please try again.', 'error');
     },
   });
 
@@ -165,13 +166,13 @@ export default function PublishHistoryPage() {
   return (
     <>
       <div className="p-8">
-        {/* 헤더 */}
+        {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-xl font-bold text-gray-900">Publish History</h1>
             {!isLoading && (
               <p className="text-sm text-gray-400 mt-0.5">
-                총 {total.toLocaleString()}건
+                {total.toLocaleString()} records
               </p>
             )}
           </div>
@@ -184,13 +185,13 @@ export default function PublishHistoryPage() {
           </button>
         </div>
 
-        {/* 카드 */}
+        {/* Card */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          {/* 빈 상태 */}
+          {/* Empty state */}
           {!isLoading && records.length === 0 ? (
             <div className="text-center py-16 text-gray-400">
               <Globe className="w-10 h-10 mx-auto mb-3 text-gray-200" />
-              <p className="text-sm">발행 내역이 없습니다.</p>
+              <p className="text-sm">No publish records found.</p>
             </div>
           ) : (
             <>
@@ -227,12 +228,13 @@ export default function PublishHistoryPage() {
                             className="hover:bg-blue-50/20 transition-colors"
                           >
                             {/* Draft */}
-                            <td className="px-4 py-4">
+                            <td className="px-4 py-4 max-w-[200px]">
                               <Link
                                 to={`/article-drafts/${record.draftId}`}
-                                className="font-mono text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                                title={record.draft?.title ?? record.draftId}
+                                className="block text-xs text-blue-600 hover:text-blue-800 hover:underline truncate"
                               >
-                                {record.draftId.slice(0, 8)}
+                                {record.draft?.title ?? record.draftId.slice(0, 8)}
                               </Link>
                             </td>
 
@@ -270,14 +272,14 @@ export default function PublishHistoryPage() {
                                     setFormModal({ open: true, record })
                                   }
                                   className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                  title="수정"
+                                  title="Edit"
                                 >
                                   <Pencil className="w-3.5 h-3.5" />
                                 </button>
                                 <button
                                   onClick={() => setDeleteTarget(record)}
                                   className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                  title="삭제"
+                                  title="Delete"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
@@ -289,12 +291,11 @@ export default function PublishHistoryPage() {
                 </table>
               </div>
 
-              {/* 페이지네이션 */}
+              {/* Pagination */}
               {totalPages > 1 && (
                 <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
                   <span className="text-xs text-gray-500">
-                    {total}개 중 {(page - 1) * LIMIT + 1}–
-                    {Math.min(page * LIMIT, total)}
+                    {(page - 1) * LIMIT + 1}–{Math.min(page * LIMIT, total)} of {total}
                   </span>
                   <div className="flex gap-1">
                     <button
