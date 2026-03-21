@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { RefreshCw, Info, X, Tag, Target, Calendar, BookOpen } from 'lucide-react';
-import type { TopicCandidate, TopicCandidateListParams, TopicCandidateStatus } from '../../types/topicCandidate';
+import { RefreshCw, Info, X, Tag, Target, Calendar, BookOpen, FlaskConical, TrendingUp, TrendingDown } from 'lucide-react';
+import type { TopicCandidate, TopicCandidateListParams, TopicCandidateStatus, EvaluationDetail } from '../../types/topicCandidate';
 
 // ─── 상수 ─────────────────────────────────────────────────────────────────────
 
@@ -35,14 +35,38 @@ const TARGET_READER_STYLES: Record<string, string> = {
   advanced: 'bg-rose-100 text-rose-700',
 };
 
+const VERDICT_STYLES = {
+  keep:     { badge: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-500' },
+  consider: { badge: 'bg-amber-100 text-amber-700',    dot: 'bg-amber-400' },
+  drop:     { badge: 'bg-red-100 text-red-600',         dot: 'bg-red-400' },
+};
+
+const EVAL_LABELS: Record<keyof EvaluationDetail, string> = {
+  search_intent_clarity: 'Search Intent Clarity',
+  topic_specificity:     'Topic Specificity',
+  seo_title_quality:     'SEO Title Quality',
+  practical_value:       'Practical Value',
+  outline_feasibility:   'Outline Feasibility',
+  uniqueness:            'Uniqueness',
+};
+
+const EVAL_KEYS: (keyof EvaluationDetail)[] = [
+  'search_intent_clarity',
+  'topic_specificity',
+  'seo_title_quality',
+  'practical_value',
+  'outline_feasibility',
+  'uniqueness',
+];
+
 // ─── 서브 컴포넌트 ──────────────────────────────────────────────────────────────
 
 const SKELETON_WIDTHS = [
-  ['60%', '15%', '12%', '12%', '8%'],
-  ['75%', '15%', '12%', '12%', '8%'],
-  ['50%', '15%', '12%', '12%', '8%'],
-  ['70%', '15%', '12%', '12%', '8%'],
-  ['65%', '15%', '12%', '12%', '8%'],
+  ['60%', '12%', '10%', '6%', '5%', '8%', '8%', '6%', '6%'],
+  ['75%', '12%', '10%', '6%', '5%', '8%', '8%', '6%', '6%'],
+  ['50%', '12%', '10%', '6%', '5%', '8%', '8%', '6%', '6%'],
+  ['70%', '12%', '10%', '6%', '5%', '8%', '8%', '6%', '6%'],
+  ['65%', '12%', '10%', '6%', '5%', '8%', '8%', '6%', '6%'],
 ];
 
 function SkeletonRow({ index }: { index: number }) {
@@ -68,7 +92,7 @@ function formatDate(dateStr: string): string {
   });
 }
 
-// ─── Detail Modal ──────────────────────────────────────────────────────────────
+// ─── Detail Modal (기존 — 내용 상세) ───────────────────────────────────────────
 
 function DetailModal({ candidate, onClose }: { candidate: TopicCandidate; onClose: () => void }) {
   return (
@@ -97,8 +121,6 @@ function DetailModal({ candidate, onClose }: { candidate: TopicCandidate; onClos
             </span>
           </div>
           <h2 className="text-lg font-bold text-white leading-snug pr-8 mb-4">{candidate.title}</h2>
-
-          {/* Metadata chips — header 안에 배치 */}
           <div className="flex flex-wrap gap-2">
             {candidate.searchIntent && (
               <span
@@ -125,7 +147,6 @@ function DetailModal({ candidate, onClose }: { candidate: TopicCandidate; onClos
 
         {/* Body */}
         <div className="px-6 py-5 space-y-5">
-          {/* Why This Topic */}
           {candidate.whyThisTopic && (
             <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3.5">
               <p className="text-xs font-semibold text-amber-500 uppercase tracking-wider mb-1.5">
@@ -134,8 +155,6 @@ function DetailModal({ candidate, onClose }: { candidate: TopicCandidate; onClos
               <p className="text-sm text-amber-900 leading-relaxed">{candidate.whyThisTopic}</p>
             </div>
           )}
-
-          {/* Outline Preview */}
           {candidate.outlinePreview && candidate.outlinePreview.length > 0 && (
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
@@ -151,6 +170,153 @@ function DetailModal({ candidate, onClose }: { candidate: TopicCandidate; onClos
                   </li>
                 ))}
               </ol>
+            </div>
+          )}
+          <div className="pt-2 border-t border-gray-100 flex items-center gap-2 text-xs text-gray-400">
+            <Calendar className="w-3.5 h-3.5" />
+            <span>Created {formatDate(candidate.createdAt)}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Evaluation Modal (신규 — 평가 상세) ───────────────────────────────────────
+
+function ScoreBar({ score }: { score: number }) {
+  const pct = Math.min(Math.max((score / 10) * 100, 0), 100);
+  const color =
+    score >= 8 ? 'bg-emerald-500' :
+    score >= 6 ? 'bg-amber-400' :
+                 'bg-red-400';
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all ${color}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <span className="w-8 text-right text-xs font-semibold text-gray-700 tabular-nums">
+        {score.toFixed(1)}
+      </span>
+    </div>
+  );
+}
+
+function EvaluationModal({ candidate, onClose }: { candidate: TopicCandidate; onClose: () => void }) {
+  const verdict = candidate.verdict;
+  const verdictStyle = verdict ? VERDICT_STYLES[verdict] : null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="relative bg-gradient-to-br from-emerald-600 to-teal-700 px-6 pt-6 pb-5 rounded-t-2xl shrink-0">
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+
+          {/* Rank + Verdict */}
+          <div className="flex items-center gap-2 mb-3">
+            {candidate.rank && (
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-white/20 text-white">
+                #{candidate.rank}
+              </span>
+            )}
+            {verdictStyle && verdict && (
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${verdictStyle.badge}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${verdictStyle.dot}`} />
+                {verdict.charAt(0).toUpperCase() + verdict.slice(1)}
+              </span>
+            )}
+          </div>
+
+          <h2 className="text-base font-bold text-white leading-snug pr-8 mb-3">
+            {candidate.title}
+          </h2>
+
+          {/* Overall Score */}
+          <div className="flex items-end gap-1.5">
+            <span className="text-4xl font-extrabold text-white tabular-nums leading-none">
+              {candidate.overallScore != null ? Number(candidate.overallScore).toFixed(1) : '—'}
+            </span>
+            <span className="text-white/60 text-sm mb-1">/ 10</span>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="overflow-y-auto px-6 py-5 space-y-5">
+
+          {/* Strengths */}
+          {candidate.strengths && candidate.strengths.length > 0 && (
+            <div>
+              <div className="flex items-center gap-1.5 mb-2.5">
+                <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
+                <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wider">
+                  Strengths
+                </p>
+              </div>
+              <ul className="space-y-1.5">
+                {candidate.strengths.map((s, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
+                    <span className="shrink-0 mt-0.5 w-4 h-4 rounded-full bg-emerald-100 text-emerald-600 text-xs font-bold flex items-center justify-center">✓</span>
+                    {s}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Weaknesses */}
+          {candidate.weaknesses && candidate.weaknesses.length > 0 && (
+            <div>
+              <div className="flex items-center gap-1.5 mb-2.5">
+                <TrendingDown className="w-3.5 h-3.5 text-red-400" />
+                <p className="text-xs font-semibold text-red-500 uppercase tracking-wider">
+                  Weaknesses
+                </p>
+              </div>
+              <ul className="space-y-1.5">
+                {candidate.weaknesses.map((w, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
+                    <span className="shrink-0 mt-0.5 w-4 h-4 rounded-full bg-red-100 text-red-500 text-xs font-bold flex items-center justify-center">✗</span>
+                    {w}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Evaluation Breakdown */}
+          {candidate.evaluationDetail && (
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                Evaluation Breakdown
+              </p>
+              <div className="space-y-3">
+                {EVAL_KEYS.map((key) => {
+                  const score = candidate.evaluationDetail?.[key] ?? 0;
+                  return (
+                    <div key={key}>
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-xs text-gray-500">{EVAL_LABELS[key]}</span>
+                      </div>
+                      <ScoreBar score={score} />
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
 
@@ -189,8 +355,9 @@ export default function TopicCandidateTable({
   onRetry,
 }: Props) {
   const [detailCandidate, setDetailCandidate] = useState<TopicCandidate | null>(null);
+  const [evalCandidate, setEvalCandidate] = useState<TopicCandidate | null>(null);
 
-  const COL_SPAN = 5;
+  const COL_SPAN = 9;
 
   return (
     <>
@@ -205,10 +372,14 @@ export default function TopicCandidateTable({
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/80">
                 {[
-                  { label: 'Title', className: 'min-w-[240px]' },
+                  { label: 'Title',         className: 'min-w-[240px]' },
                   { label: 'Search Intent', className: 'min-w-[120px]' },
                   { label: 'Reader' },
+                  { label: 'Score',   className: 'min-w-[64px]' },
+                  { label: 'Rank',    className: 'min-w-[56px]' },
+                  { label: 'Verdict', className: 'min-w-[90px]' },
                   { label: 'Status' },
+                  { label: '' },
                   { label: '' },
                 ].map((h, i) => (
                   <th
@@ -252,61 +423,118 @@ export default function TopicCandidateTable({
                   </td>
                 </tr>
               ) : (
-                data.map((candidate) => (
-                  <tr key={candidate.id} className="hover:bg-blue-50/30 transition-colors">
-                    {/* title */}
-                    <td className="px-4 py-3.5">
-                      <span className="font-medium text-gray-900">{candidate.title}</span>
-                    </td>
+                data.map((candidate) => {
+                  const verdict = candidate.verdict;
+                  const verdictStyle = verdict ? VERDICT_STYLES[verdict] : null;
+                  const isEvaluated = candidate.overallScore != null;
 
-                    {/* searchIntent */}
-                    <td className="px-4 py-3.5">
-                      {candidate.searchIntent ? (
+                  return (
+                    <tr key={candidate.id} className="hover:bg-blue-50/30 transition-colors">
+                      {/* Title */}
+                      <td className="px-4 py-3.5">
+                        <span className="font-medium text-gray-900">{candidate.title}</span>
+                      </td>
+
+                      {/* Search Intent */}
+                      <td className="px-4 py-3.5">
+                        {candidate.searchIntent ? (
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${SEARCH_INTENT_STYLES[candidate.searchIntent] ?? 'bg-gray-100 text-gray-600'}`}
+                          >
+                            {candidate.searchIntent}
+                          </span>
+                        ) : (
+                          <span className="text-gray-300">—</span>
+                        )}
+                      </td>
+
+                      {/* Target Reader */}
+                      <td className="px-4 py-3.5">
+                        {candidate.targetReader ? (
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${TARGET_READER_STYLES[candidate.targetReader] ?? 'bg-gray-100 text-gray-600'}`}
+                          >
+                            {candidate.targetReader}
+                          </span>
+                        ) : (
+                          <span className="text-gray-300">—</span>
+                        )}
+                      </td>
+
+                      {/* Score */}
+                      <td className="px-4 py-3.5">
+                        {isEvaluated ? (
+                          <span className="text-sm font-semibold text-gray-800 tabular-nums">
+                            {Number(candidate.overallScore).toFixed(1)}
+                          </span>
+                        ) : (
+                          <span className="text-gray-300">—</span>
+                        )}
+                      </td>
+
+                      {/* Rank */}
+                      <td className="px-4 py-3.5">
+                        {isEvaluated && candidate.rank != null ? (
+                          <span className="text-xs font-bold text-gray-500 tabular-nums">
+                            #{candidate.rank}
+                          </span>
+                        ) : (
+                          <span className="text-gray-300">—</span>
+                        )}
+                      </td>
+
+                      {/* Verdict */}
+                      <td className="px-4 py-3.5">
+                        {verdictStyle && verdict ? (
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${verdictStyle.badge}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${verdictStyle.dot}`} />
+                            {verdict.charAt(0).toUpperCase() + verdict.slice(1)}
+                          </span>
+                        ) : (
+                          <span className="text-gray-300">—</span>
+                        )}
+                      </td>
+
+                      {/* Status */}
+                      <td className="px-4 py-3.5">
                         <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${SEARCH_INTENT_STYLES[candidate.searchIntent] ?? 'bg-gray-100 text-gray-600'}`}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[candidate.status]}`}
                         >
-                          {candidate.searchIntent}
+                          <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[candidate.status]}`} />
+                          {STATUS_LABELS[candidate.status]}
                         </span>
-                      ) : (
-                        <span className="text-gray-300">—</span>
-                      )}
-                    </td>
+                      </td>
 
-                    {/* targetReader */}
-                    <td className="px-4 py-3.5">
-                      {candidate.targetReader ? (
-                        <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${TARGET_READER_STYLES[candidate.targetReader] ?? 'bg-gray-100 text-gray-600'}`}
+                      {/* Detail 버튼 */}
+                      <td className="px-4 py-3.5">
+                        <button
+                          onClick={() => setDetailCandidate(candidate)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors"
                         >
-                          {candidate.targetReader}
-                        </span>
-                      ) : (
-                        <span className="text-gray-300">—</span>
-                      )}
-                    </td>
+                          <Info className="w-3.5 h-3.5" />
+                          Detail
+                        </button>
+                      </td>
 
-                    {/* status */}
-                    <td className="px-4 py-3.5">
-                      <span
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[candidate.status]}`}
-                      >
-                        <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[candidate.status]}`} />
-                        {STATUS_LABELS[candidate.status]}
-                      </span>
-                    </td>
-
-                    {/* detail */}
-                    <td className="px-4 py-3.5">
-                      <button
-                        onClick={() => setDetailCandidate(candidate)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors"
-                      >
-                        <Info className="w-3.5 h-3.5" />
-                        Detail
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                      {/* Eval 버튼 */}
+                      <td className="px-4 py-3.5">
+                        <button
+                          onClick={() => isEvaluated && setEvalCandidate(candidate)}
+                          disabled={!isEvaluated}
+                          title={!isEvaluated ? 'Not evaluated yet' : 'View evaluation'}
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                            isEvaluated
+                              ? 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100'
+                              : 'text-gray-300 bg-gray-50 cursor-not-allowed'
+                          }`}
+                        >
+                          <FlaskConical className="w-3.5 h-3.5" />
+                          Eval
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -315,6 +543,9 @@ export default function TopicCandidateTable({
 
       {detailCandidate && (
         <DetailModal candidate={detailCandidate} onClose={() => setDetailCandidate(null)} />
+      )}
+      {evalCandidate && (
+        <EvaluationModal candidate={evalCandidate} onClose={() => setEvalCandidate(null)} />
       )}
     </>
   );
