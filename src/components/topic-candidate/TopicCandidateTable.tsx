@@ -1,6 +1,9 @@
 import { useState } from 'react';
-import { RefreshCw, Info, X, Tag, Target, Calendar, BookOpen, FlaskConical, TrendingUp, TrendingDown, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
-import type { TopicCandidate, TopicCandidateListParams, TopicCandidateStatus, EvaluationDetail } from '../../types/topicCandidate';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { RefreshCw, Info, X, Tag, Target, Calendar, BookOpen, CheckCircle, Loader2, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
+import axios from 'axios';
+import type { TopicCandidate, TopicCandidateListParams, TopicCandidateStatus } from '../../types/topicCandidate';
+import { topicCandidateApi } from '../../api/topicCandidate';
 
 // ─── 상수 ─────────────────────────────────────────────────────────────────────
 
@@ -41,32 +44,14 @@ const VERDICT_STYLES = {
   drop:     { badge: 'bg-red-100 text-red-600',         dot: 'bg-red-400' },
 };
 
-const EVAL_LABELS: Record<keyof EvaluationDetail, string> = {
-  search_intent_clarity: 'Search Intent Clarity',
-  topic_specificity:     'Topic Specificity',
-  seo_title_quality:     'SEO Title Quality',
-  practical_value:       'Practical Value',
-  outline_feasibility:   'Outline Feasibility',
-  uniqueness:            'Uniqueness',
-};
-
-const EVAL_KEYS: (keyof EvaluationDetail)[] = [
-  'search_intent_clarity',
-  'topic_specificity',
-  'seo_title_quality',
-  'practical_value',
-  'outline_feasibility',
-  'uniqueness',
-];
-
 // ─── 서브 컴포넌트 ──────────────────────────────────────────────────────────────
 
 const SKELETON_WIDTHS = [
-  ['60%', '12%', '10%', '6%', '5%', '8%', '8%', '6%', '6%'],
-  ['75%', '12%', '10%', '6%', '5%', '8%', '8%', '6%', '6%'],
-  ['50%', '12%', '10%', '6%', '5%', '8%', '8%', '6%', '6%'],
-  ['70%', '12%', '10%', '6%', '5%', '8%', '8%', '6%', '6%'],
-  ['65%', '12%', '10%', '6%', '5%', '8%', '8%', '6%', '6%'],
+  ['60%', '12%', '10%', '8%', '8%', '6%', '6%', '6%', '6%'],
+  ['75%', '12%', '10%', '8%', '8%', '6%', '6%', '6%', '6%'],
+  ['50%', '12%', '10%', '8%', '8%', '6%', '6%', '6%', '6%'],
+  ['70%', '12%', '10%', '8%', '8%', '6%', '6%', '6%', '6%'],
+  ['65%', '12%', '10%', '8%', '8%', '6%', '6%', '6%', '6%'],
 ];
 
 function SkeletonRow({ index }: { index: number }) {
@@ -92,7 +77,7 @@ function formatDate(dateStr: string): string {
   });
 }
 
-// ─── Detail Modal (기존 — 내용 상세) ───────────────────────────────────────────
+// ─── Detail Modal ──────────────────────────────────────────────────────────────
 
 function DetailModal({ candidate, onClose }: { candidate: TopicCandidate; onClose: () => void }) {
   return (
@@ -182,155 +167,6 @@ function DetailModal({ candidate, onClose }: { candidate: TopicCandidate; onClos
   );
 }
 
-// ─── Evaluation Modal (신규 — 평가 상세) ───────────────────────────────────────
-
-function ScoreBar({ score }: { score: number }) {
-  const pct = Math.min(Math.max((score / 10) * 100, 0), 100);
-  const color =
-    score >= 8 ? 'bg-emerald-500' :
-    score >= 6 ? 'bg-amber-400' :
-                 'bg-red-400';
-  return (
-    <div className="flex items-center gap-3">
-      <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-        <div
-          className={`h-full rounded-full transition-all ${color}`}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      <span className="w-8 text-right text-xs font-semibold text-gray-700 tabular-nums">
-        {score.toFixed(1)}
-      </span>
-    </div>
-  );
-}
-
-function EvaluationModal({ candidate, onClose }: { candidate: TopicCandidate; onClose: () => void }) {
-  const verdict = candidate.verdict;
-  const verdictStyle = verdict ? VERDICT_STYLES[verdict] : null;
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="relative bg-gradient-to-br from-emerald-600 to-teal-700 px-6 pt-6 pb-5 rounded-t-2xl shrink-0">
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-
-          {/* Rank + Verdict */}
-          <div className="flex items-center gap-2 mb-3">
-            {candidate.rank && (
-              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-white/20 text-white">
-                #{candidate.rank}
-              </span>
-            )}
-            {verdictStyle && verdict && (
-              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${verdictStyle.badge}`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${verdictStyle.dot}`} />
-                {verdict.charAt(0).toUpperCase() + verdict.slice(1)}
-              </span>
-            )}
-          </div>
-
-          <h2 className="text-base font-bold text-white leading-snug pr-8 mb-3">
-            {candidate.title}
-          </h2>
-
-          {/* Overall Score */}
-          <div className="flex items-end gap-1.5">
-            <span className="text-4xl font-extrabold text-white tabular-nums leading-none">
-              {candidate.overallScore != null ? Number(candidate.overallScore).toFixed(1) : '—'}
-            </span>
-            <span className="text-white/60 text-sm mb-1">/ 10</span>
-          </div>
-        </div>
-
-        {/* Body */}
-        <div className="overflow-y-auto px-6 py-5 space-y-5">
-
-          {/* Strengths */}
-          {candidate.strengths && candidate.strengths.length > 0 && (
-            <div>
-              <div className="flex items-center gap-1.5 mb-2.5">
-                <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
-                <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wider">
-                  Strengths
-                </p>
-              </div>
-              <ul className="space-y-1.5">
-                {candidate.strengths.map((s, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
-                    <span className="shrink-0 mt-0.5 w-4 h-4 rounded-full bg-emerald-100 text-emerald-600 text-xs font-bold flex items-center justify-center">✓</span>
-                    {s}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Weaknesses */}
-          {candidate.weaknesses && candidate.weaknesses.length > 0 && (
-            <div>
-              <div className="flex items-center gap-1.5 mb-2.5">
-                <TrendingDown className="w-3.5 h-3.5 text-red-400" />
-                <p className="text-xs font-semibold text-red-500 uppercase tracking-wider">
-                  Weaknesses
-                </p>
-              </div>
-              <ul className="space-y-1.5">
-                {candidate.weaknesses.map((w, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
-                    <span className="shrink-0 mt-0.5 w-4 h-4 rounded-full bg-red-100 text-red-500 text-xs font-bold flex items-center justify-center">✗</span>
-                    {w}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Evaluation Breakdown */}
-          {candidate.evaluationDetail && (
-            <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-                Evaluation Breakdown
-              </p>
-              <div className="space-y-3">
-                {EVAL_KEYS.map((key) => {
-                  const score = candidate.evaluationDetail?.[key] ?? 0;
-                  return (
-                    <div key={key}>
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-xs text-gray-500">{EVAL_LABELS[key]}</span>
-                      </div>
-                      <ScoreBar score={score} />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Created At */}
-          <div className="pt-2 border-t border-gray-100 flex items-center gap-2 text-xs text-gray-400">
-            <Calendar className="w-3.5 h-3.5" />
-            <span>Created {formatDate(candidate.createdAt)}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ─── Props ─────────────────────────────────────────────────────────────────────
 
 type SortableColumn = NonNullable<TopicCandidateListParams['sortBy']>;
@@ -356,10 +192,27 @@ export default function TopicCandidateTable({
   onSort,
   onRetry,
 }: Props) {
+  const queryClient = useQueryClient();
   const [detailCandidate, setDetailCandidate] = useState<TopicCandidate | null>(null);
-  const [evalCandidate, setEvalCandidate] = useState<TopicCandidate | null>(null);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
 
   const COL_SPAN = 9;
+
+  const approveMutation = useMutation({
+    mutationFn: (id: string) =>
+      topicCandidateApi.updateStatus(id, { status: 'approved' }),
+    onMutate: (id) => setApprovingId(id),
+    onSettled: () => setApprovingId(null),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['topic-candidates'] });
+    },
+    onError: (error) => {
+      const message = axios.isAxiosError(error)
+        ? (error.response?.data?.message ?? 'Failed to approve candidate.')
+        : 'Failed to approve candidate.';
+      alert(message);
+    },
+  });
 
   function SortIcon({ column }: { column: SortableColumn }) {
     if (params.sortBy !== column) return <ArrowUpDown className="w-3 h-3 text-gray-300" />;
@@ -384,10 +237,10 @@ export default function TopicCandidateTable({
                   { label: 'Title',         className: 'min-w-[240px]' },
                   { label: 'Search Intent', className: 'min-w-[120px]' },
                   { label: 'Reader' },
-                  { label: 'Verdict', className: 'min-w-[90px]' },
+                  { label: 'Verdict',       className: 'min-w-[90px]' },
                   { label: 'Status' },
-                  { label: '' },
-                  { label: '' },
+                  { label: '' },  // Detail
+                  { label: '' },  // Approve
                 ].map((h, i) => (
                   <th
                     key={i}
@@ -454,6 +307,8 @@ export default function TopicCandidateTable({
                   const verdict = candidate.verdict;
                   const verdictStyle = verdict ? VERDICT_STYLES[verdict] : null;
                   const isEvaluated = candidate.overallScore != null;
+                  const isPending = candidate.status === 'pending';
+                  const isApproving = approvingId === candidate.id;
 
                   return (
                     <tr key={candidate.id} className="hover:bg-blue-50/30 transition-colors">
@@ -521,20 +376,28 @@ export default function TopicCandidateTable({
                         </button>
                       </td>
 
-                      {/* Eval 버튼 */}
+                      {/* Approve 버튼 */}
                       <td className="px-4 py-3.5">
                         <button
-                          onClick={() => isEvaluated && setEvalCandidate(candidate)}
-                          disabled={!isEvaluated}
-                          title={!isEvaluated ? 'Not evaluated yet' : 'View evaluation'}
+                          onClick={() => isPending && approveMutation.mutate(candidate.id)}
+                          disabled={!isPending || isApproving}
+                          title={
+                            !isPending
+                              ? `Already ${candidate.status}`
+                              : 'Approve and start article generation'
+                          }
                           className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-                            isEvaluated
-                              ? 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100'
+                            isPending && !isApproving
+                              ? 'text-green-700 bg-green-50 hover:bg-green-100'
                               : 'text-gray-300 bg-gray-50 cursor-not-allowed'
                           }`}
                         >
-                          <FlaskConical className="w-3.5 h-3.5" />
-                          Eval
+                          {isApproving ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <CheckCircle className="w-3.5 h-3.5" />
+                          )}
+                          Approve
                         </button>
                       </td>
 
@@ -570,9 +433,6 @@ export default function TopicCandidateTable({
 
       {detailCandidate && (
         <DetailModal candidate={detailCandidate} onClose={() => setDetailCandidate(null)} />
-      )}
-      {evalCandidate && (
-        <EvaluationModal candidate={evalCandidate} onClose={() => setEvalCandidate(null)} />
       )}
     </>
   );
