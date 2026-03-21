@@ -1,5 +1,14 @@
 export type TopicCandidateStatus = 'pending' | 'approved' | 'rejected';
 
+export interface EvaluationDetail {
+  search_intent_clarity: number;
+  topic_specificity: number;
+  seo_title_quality: number;
+  practical_value: number;
+  outline_feasibility: number;
+  uniqueness: number;
+}
+
 export interface TopicCandidate {
   id: string;
   topicSeedId: string;
@@ -11,6 +20,12 @@ export interface TopicCandidate {
   targetReader: string | null;
   whyThisTopic: string | null;
   outlinePreview: string[] | null;
+  overallScore: number | null;
+  rank: number | null;
+  strengths: string[] | null;
+  weaknesses: string[] | null;
+  verdict: 'keep' | 'consider' | 'drop' | null;
+  evaluationDetail: EvaluationDetail | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -5,6 +5,7 @@ import type {
   TopicSeedListParams,
   TopicSeedFormValues,
   GenerateResponse,
+  EvaluateResponse,
 } from '../types/topicSeed';
 
 const api = axios.create({
@@ -44,6 +45,11 @@ export const topicSeedApi = {
 
   generate: async (id: string): Promise<GenerateResponse> => {
     const { data } = await api.post<GenerateResponse>(`/topic-seeds/${id}/generate`);
+    return data;
+  },
+
+  evaluate: async (id: string): Promise<EvaluateResponse> => {
+    const { data } = await api.post<EvaluateResponse>(`/topic-seeds/${id}/evaluate`);
     return data;
   },
 };

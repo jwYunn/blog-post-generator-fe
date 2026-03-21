@@ -48,3 +48,8 @@ export interface GenerateResponse {
   message: string;
   seedId: string;
 }
+
+export interface EvaluateResponse {
+  message: string;
+  seedId: string;
+}
