@@ -6,6 +6,7 @@ import TopicCandidatePage from './pages/TopicCandidatePage';
 import ArticleDraftListPage from './pages/ArticleDraftListPage';
 import ArticleDraftDetailPage from './pages/ArticleDraftDetailPage';
 import PublishHistoryPage from './pages/PublishHistoryPage';
+import ApiSourcePage from './pages/ApiSourcePage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -28,6 +29,7 @@ function App() {
             <Route path="/article-drafts" element={<ArticleDraftListPage />} />
             <Route path="/article-drafts/:id" element={<ArticleDraftDetailPage />} />
             <Route path="/publish-history" element={<PublishHistoryPage />} />
+            <Route path="/api-sources" element={<ApiSourcePage />} />
           </Route>
         </Routes>
       </BrowserRouter>
