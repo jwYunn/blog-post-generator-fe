@@ -7,6 +7,7 @@ import ArticleDraftListPage from './pages/ArticleDraftListPage';
 import ArticleDraftDetailPage from './pages/ArticleDraftDetailPage';
 import PublishHistoryPage from './pages/PublishHistoryPage';
 import ApiSourcePage from './pages/ApiSourcePage';
+import ThumbnailGeneratorPage from './pages/ThumbnailGeneratorPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -30,6 +31,7 @@ function App() {
             <Route path="/article-drafts/:id" element={<ArticleDraftDetailPage />} />
             <Route path="/publish-history" element={<PublishHistoryPage />} />
             <Route path="/api-sources" element={<ApiSourcePage />} />
+            <Route path="/thumbnail-generator" element={<ThumbnailGeneratorPage />} />
           </Route>
         </Routes>
       </BrowserRouter>
