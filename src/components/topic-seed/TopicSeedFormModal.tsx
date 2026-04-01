@@ -27,10 +27,10 @@ const schema = z.object({
     .min(1, 'Required')
     .max(100, 'Max 100 characters'),
   category: z.enum(['meaning', 'difference', 'example', 'phrases', 'grammar'], {
-    required_error: 'Please select a category',
+    error: 'Please select a category',
   }),
   priority: z
-    .number({ invalid_type_error: 'Must be a number' })
+    .number({ error: 'Must be a number' })
     .int('Must be an integer')
     .min(1, 'Minimum 1')
     .max(10, 'Maximum 10'),

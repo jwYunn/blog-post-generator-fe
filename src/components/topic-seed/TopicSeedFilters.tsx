@@ -23,7 +23,7 @@ interface Props {
 
 export default function TopicSeedFilters({ params, onChange }: Props) {
   const [searchValue, setSearchValue] = useState(params.search ?? '');
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     setSearchValue(params.search ?? '');
