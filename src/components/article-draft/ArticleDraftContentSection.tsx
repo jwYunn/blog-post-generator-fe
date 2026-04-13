@@ -7,9 +7,9 @@ import { Copy, Check } from 'lucide-react';
 
 interface Props {
   content: string;
-  label?: string;                     // 헤더 제목, 기본값: 'Content'
-  showCopy?: boolean;                 // Review 단계에서만 true
-  thumbnailImageUrl?: string | null;  // Preview 모드 상단 썸네일 (Review 전용)
+  label?: string;                     // section header label, defaults to 'Content'
+  showCopy?: boolean;                 // only true in the Review step
+  thumbnailImageUrl?: string | null;  // thumbnail shown at top in Preview mode (Review step only)
 }
 
 // ─── View mode ────────────────────────────────────────────────────────────────
@@ -122,7 +122,7 @@ function MarkdownPreview({
   );
 }
 
-// ─── Source view (Markdown / HTML 탭) ─────────────────────────────────────────
+// ─── Source view (Markdown / HTML tabs) ──────────────────────────────────────
 
 function SourceView({ text }: { text: string }) {
   return (
@@ -143,7 +143,7 @@ export default function ArticleDraftContentSection({
   thumbnailImageUrl,
 }: Props) {
   const [copied, setCopied]         = useState(false);
-  // Review 단: preview | markdown | html / Content 단: preview | markdown(=raw)
+  // Review step: preview | markdown | html / Content step: preview | markdown (= raw)
   const [viewMode, setViewMode]     = useState<ViewMode>('preview');
 
   // HTML 변환 — showCopy(=Review) 단에서만 사용
@@ -182,9 +182,9 @@ export default function ArticleDraftContentSection({
     ? htmlContent.split('\n').length
     : content.split('\n').length;
 
-  // ─── 토글 버튼 정의 ─────────────────────────────────────────────────────────
-  // Review 단(showCopy): Preview | Markdown | HTML
-  // Content 단         : Preview | Raw (내부적으로 'markdown' 모드)
+  // ─── Tab toggle definition ───────────────────────────────────────────────────
+  // Review step (showCopy=true): Preview | Markdown | HTML
+  // Content step: Preview | Raw (internally uses 'markdown' mode)
   const tabs = showCopy
     ? ([
         { mode: 'preview'  as ViewMode, label: 'Preview'  },

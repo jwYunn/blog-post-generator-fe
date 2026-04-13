@@ -2,7 +2,7 @@ import { ChevronsUpDown, ChevronUp, ChevronDown, Pencil, Trash2, RefreshCw } fro
 import { useNavigate } from 'react-router-dom';
 import type { TopicSeed, TopicSeedListParams } from '../../types/topicSeed';
 
-// ─── 상수 ─────────────────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const CATEGORY_STYLES: Record<string, string> = {
   meaning: 'bg-blue-100 text-blue-700',
@@ -20,7 +20,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   grammar: 'Grammar',
 };
 
-// priority 1~10 색상 단계 (저→고)
+// Priority 1–10 color scale (low → high)
 const PRIORITY_STYLES: Record<number, string> = {
   1: 'bg-gray-100 text-gray-400',
   2: 'bg-gray-100 text-gray-500',
@@ -36,7 +36,7 @@ const PRIORITY_STYLES: Record<number, string> = {
 
 type SortableColumn = 'createdAt' | 'priority' | 'usedCount';
 
-// ─── 서브 컴포넌트 ──────────────────────────────────────────────────────────────
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
 function SortIcon({ column, params }: { column: SortableColumn; params: TopicSeedListParams }) {
   if (params.sortBy !== column)
@@ -95,7 +95,7 @@ interface Props {
   onRetry: () => void;
 }
 
-// ─── 메인 컴포넌트 ──────────────────────────────────────────────────────────────
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function TopicSeedTable({
   data,
@@ -123,12 +123,12 @@ export default function TopicSeedTable({
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      {/* 상단 fetching 인디케이터 */}
+      {/* Top fetching indicator */}
       <div className={`h-0.5 bg-blue-500 transition-all ${isFetching && !isLoading ? 'opacity-100' : 'opacity-0'}`} />
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          {/* 헤더 */}
+          {/* Header */}
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50/80">
               {headers.map((h) => (
@@ -148,11 +148,11 @@ export default function TopicSeedTable({
 
           {/* 바디 */}
           <tbody className="divide-y divide-gray-50">
-            {/* 로딩 스켈레톤 */}
+            {/* Loading skeleton */}
             {isLoading ? (
               Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} index={i} />)
             ) : isError ? (
-              /* 에러 */
+              /* Error */
               <tr>
                 <td colSpan={8} className="px-4 py-20 text-center">
                   <div className="flex flex-col items-center gap-3">
@@ -170,7 +170,7 @@ export default function TopicSeedTable({
                 </td>
               </tr>
             ) : data.length === 0 ? (
-              /* 빈 목록 */
+              /* Empty list */
               <tr>
                 <td colSpan={8} className="px-4 py-20 text-center">
                   <div className="flex flex-col items-center gap-2">
@@ -181,7 +181,7 @@ export default function TopicSeedTable({
                 </td>
               </tr>
             ) : (
-              /* 데이터 */
+              /* Data rows */
               data.map((seed) => (
                 <tr
                   key={seed.id}
@@ -245,7 +245,7 @@ export default function TopicSeedTable({
                     {formatDate(seed.createdAt)}
                   </td>
 
-                  {/* 액션 */}
+                  {/* Actions */}
                   <td className="px-4 py-3.5">
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button

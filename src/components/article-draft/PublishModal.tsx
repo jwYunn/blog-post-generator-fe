@@ -7,11 +7,11 @@ import type { PublishJobMode } from '../../types/articleDraft';
 import { useToast } from '../../hooks/useToast';
 import ToastContainer from '../Toast';
 
-// ─── 최소 시각 helper (현재 시간 + 1분) ──────────────────────────────────────
+// ─── Min time helper (current time + 1 minute) ───────────────────────────────
 
 function getMinDatetimeLocal(): string {
   const d = new Date(Date.now() + 60_000);
-  // datetime-local 형식: "YYYY-MM-DDTHH:mm"
+  // datetime-local format: "YYYY-MM-DDTHH:mm"
   const pad = (n: number) => String(n).padStart(2, '0');
   return (
     `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
@@ -29,7 +29,7 @@ interface Props {
   onSuccess: () => void;
 }
 
-// ─── 컴포넌트 ─────────────────────────────────────────────────────────────────
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function PublishModal({
   open,
@@ -44,7 +44,7 @@ export default function PublishModal({
   const [scheduledAt, setScheduledAt] = useState('');
   const [scheduleError, setScheduleError] = useState('');
 
-  // 모달이 열릴 때마다 초기화
+  // Reset state every time the modal opens
   useEffect(() => {
     if (!open) return;
     setMode('now');
@@ -63,24 +63,24 @@ export default function PublishModal({
       return articleDraftApi.publishDraft(draftId, { mode: 'now' });
     },
     onSuccess: () => {
-      addToast('발행 잡이 생성됐습니다.', 'success');
-      // toast가 잠깐 보이도록 약간 지연 후 onSuccess 호출
+      addToast('Publish job created.', 'success');
+      // Short delay so the toast is briefly visible before calling onSuccess
       setTimeout(() => onSuccess(), 400);
     },
     onError: () => {
-      addToast('발행 요청에 실패했습니다. 다시 시도해 주세요.', 'error');
+      addToast('Failed to publish. Please try again.', 'error');
     },
   });
 
   const handleSubmit = () => {
     if (mode === 'schedule') {
       if (!scheduledAt) {
-        setScheduleError('예약 시각을 선택해 주세요.');
+        setScheduleError('Please select a scheduled time.');
         return;
       }
       const selected = new Date(scheduledAt).getTime();
       if (selected <= Date.now() + 59_000) {
-        setScheduleError('현재 시간보다 최소 1분 이후여야 합니다.');
+        setScheduleError('Must be at least 1 minute in the future.');
         return;
       }
       setScheduleError('');
@@ -91,16 +91,16 @@ export default function PublishModal({
   return (
     <>
       <Dialog open={open} onClose={onClose} className="relative z-50">
-        {/* 배경 오버레이 */}
+        {/* Background overlay */}
         <div className="fixed inset-0 bg-black/40 backdrop-blur-[1px]" aria-hidden="true" />
 
-        {/* 모달 컨테이너 */}
+        {/* Modal container */}
         <div className="fixed inset-0 flex items-center justify-center p-4">
           <DialogPanel className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col">
-            {/* 헤더 */}
+            {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
               <DialogTitle className="text-base font-semibold text-gray-900">
-                발행
+                Publish
               </DialogTitle>
               <button
                 onClick={onClose}
@@ -110,16 +110,16 @@ export default function PublishModal({
               </button>
             </div>
 
-            {/* 바디 */}
+            {/* Body */}
             <div className="px-6 py-5 space-y-5">
-              {/* 제목 미리보기 */}
+              {/* Title preview */}
               <p className="text-sm text-gray-500 leading-relaxed line-clamp-2">
                 <span className="font-medium text-gray-700">{draftTitle}</span>
               </p>
 
-              {/* 발행 모드 선택 */}
+              {/* Publish mode selector */}
               <div className="space-y-2.5">
-                <p className="text-sm font-medium text-gray-700">발행 방식</p>
+                <p className="text-sm font-medium text-gray-700">Publish method</p>
 
                 <label className="flex items-center gap-3 cursor-pointer">
                   <input
@@ -133,7 +133,7 @@ export default function PublishModal({
                     }}
                     className="w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300"
                   />
-                  <span className="text-sm text-gray-800">지금 발행</span>
+                  <span className="text-sm text-gray-800">Publish now</span>
                 </label>
 
                 <label className="flex items-center gap-3 cursor-pointer">
@@ -145,15 +145,15 @@ export default function PublishModal({
                     onChange={() => setMode('schedule')}
                     className="w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300"
                   />
-                  <span className="text-sm text-gray-800">예약 발행</span>
+                  <span className="text-sm text-gray-800">Schedule</span>
                 </label>
               </div>
 
-              {/* 예약 시각 입력 */}
+              {/* Scheduled time input */}
               {mode === 'schedule' && (
                 <div className="space-y-1.5">
                   <label className="block text-sm font-medium text-gray-700">
-                    예약 시각 <span className="text-red-500">*</span>
+                    Scheduled time <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="datetime-local"
@@ -174,7 +174,7 @@ export default function PublishModal({
               )}
             </div>
 
-            {/* 푸터 */}
+            {/* Footer */}
             <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 flex-shrink-0">
               <button
                 type="button"
@@ -192,7 +192,7 @@ export default function PublishModal({
                 {mutation.isPending ? (
                   <span className="flex items-center gap-1.5 justify-center">
                     <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    처리 중
+                    Processing
                   </span>
                 ) : (
                   'Publish'

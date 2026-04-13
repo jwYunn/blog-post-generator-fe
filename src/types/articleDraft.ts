@@ -12,7 +12,7 @@ export type ArticleDraftStatus =
   | 'published'
   | 'failed';
 
-// 파이프라인이 아직 진행 중인 상태 (polling 트리거)
+// Pipeline is still in progress (triggers polling)
 export const IN_PROGRESS_STATUSES: ArticleDraftStatus[] = [
   'queued',
   'generating_outline',

@@ -38,7 +38,7 @@ export default function CandidateStatusActions({ id, status }: Props) {
   return (
     <div className="flex flex-col items-start gap-1">
       <div className="flex items-center gap-1.5">
-        {/* pending / rejected → Approve 버튼 표시 */}
+        {/* pending / rejected → show Approve button */}
         {(status === 'pending' || status === 'rejected') && (
           <button
             onClick={() => mutate('approved')}
@@ -54,7 +54,7 @@ export default function CandidateStatusActions({ id, status }: Props) {
           </button>
         )}
 
-        {/* pending / approved → Reject 버튼 표시 */}
+        {/* pending / approved → show Reject button */}
         {(status === 'pending' || status === 'approved') && (
           <button
             onClick={() => mutate('rejected')}

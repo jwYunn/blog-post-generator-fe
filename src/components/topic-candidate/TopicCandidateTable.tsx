@@ -5,7 +5,7 @@ import axios from 'axios';
 import type { TopicCandidate, TopicCandidateListParams, TopicCandidateStatus } from '../../types/topicCandidate';
 import { topicCandidateApi } from '../../api/topicCandidate';
 
-// ─── 상수 ─────────────────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const STATUS_STYLES: Record<TopicCandidateStatus, string> = {
   pending: 'bg-yellow-100 text-yellow-700',
@@ -44,7 +44,7 @@ const VERDICT_STYLES = {
   drop:     { badge: 'bg-red-100 text-red-600',         dot: 'bg-red-400' },
 };
 
-// ─── 서브 컴포넌트 ──────────────────────────────────────────────────────────────
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
 const SKELETON_WIDTHS = [
   ['60%', '12%', '10%', '8%', '8%', '6%', '6%', '6%', '6%'],
@@ -181,7 +181,7 @@ interface Props {
   onRetry: () => void;
 }
 
-// ─── 메인 컴포넌트 ──────────────────────────────────────────────────────────────
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function TopicCandidateTable({
   data,
@@ -224,7 +224,7 @@ export default function TopicCandidateTable({
   return (
     <>
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        {/* 상단 fetching 인디케이터 */}
+        {/* Top fetching indicator */}
         <div
           className={`h-0.5 bg-blue-500 transition-all ${isFetching && !isLoading ? 'opacity-100' : 'opacity-0'}`}
         />
@@ -249,7 +249,7 @@ export default function TopicCandidateTable({
                     {h.label}
                   </th>
                 ))}
-                {/* Score — 정렬 가능 */}
+                {/* Score — sortable */}
                 <th className="px-4 py-3 min-w-[72px]">
                   <button
                     onClick={() => onSort('overallScore')}
@@ -259,7 +259,7 @@ export default function TopicCandidateTable({
                     <SortIcon column="overallScore" />
                   </button>
                 </th>
-                {/* Rank — 정렬 가능 */}
+                {/* Rank — sortable */}
                 <th className="px-4 py-3 min-w-[64px]">
                   <button
                     onClick={() => onSort('rank')}

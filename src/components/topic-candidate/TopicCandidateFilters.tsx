@@ -17,7 +17,7 @@ interface Props {
 export default function TopicCandidateFilters({ params, seeds, onChange }: Props) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 px-4 py-3 mb-4 flex items-center gap-3 flex-wrap">
-      {/* Seed 드롭다운 */}
+      {/* Seed dropdown */}
       <select
         value={params.topicSeedId ?? ''}
         onChange={(e) => onChange({ topicSeedId: e.target.value || undefined })}
@@ -31,7 +31,7 @@ export default function TopicCandidateFilters({ params, seeds, onChange }: Props
         ))}
       </select>
 
-      {/* Status 필터 */}
+      {/* Status filter */}
       <div className="flex items-center border border-gray-200 rounded-lg p-1 bg-gray-50 gap-0.5">
         {STATUS_FILTERS.map((item) => {
           const isSelected = params.status === item.value;

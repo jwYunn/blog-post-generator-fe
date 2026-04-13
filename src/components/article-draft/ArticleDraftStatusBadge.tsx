@@ -1,7 +1,7 @@
 import type { ArticleDraftStatus } from '../../types/articleDraft';
 import { IN_PROGRESS_STATUSES } from '../../types/articleDraft';
 
-// ─── 상수 ─────────────────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const STATUS_CONFIG: Record<
   ArticleDraftStatus,
