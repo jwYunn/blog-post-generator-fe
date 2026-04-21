@@ -54,8 +54,8 @@ export default function CandidateStatusActions({ id, status }: Props) {
           </button>
         )}
 
-        {/* pending / approved → show Reject button */}
-        {(status === 'pending' || status === 'approved') && (
+        {/* pending → show Reject button (approved is locked) */}
+        {status === 'pending' && (
           <button
             onClick={() => mutate('rejected')}
             disabled={isLoading}
