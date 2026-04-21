@@ -307,7 +307,7 @@ export default function TopicCandidateTable({
                   const verdict = candidate.verdict;
                   const verdictStyle = verdict ? VERDICT_STYLES[verdict] : null;
                   const isEvaluated = candidate.overallScore != null;
-                  const isPending = candidate.status === 'pending';
+                  const canApprove = candidate.status === 'pending' || candidate.status === 'rejected';
                   const isApproving = approvingId === candidate.id;
 
                   return (
@@ -376,18 +376,18 @@ export default function TopicCandidateTable({
                         </button>
                       </td>
 
-                      {/* Approve 버튼 */}
+                      {/* Approve button */}
                       <td className="px-4 py-3.5">
                         <button
-                          onClick={() => isPending && approveMutation.mutate(candidate.id)}
-                          disabled={!isPending || isApproving}
+                          onClick={() => canApprove && approveMutation.mutate(candidate.id)}
+                          disabled={!canApprove || isApproving}
                           title={
-                            !isPending
-                              ? `Already ${candidate.status}`
+                            !canApprove
+                              ? 'Already approved'
                               : 'Approve and start article generation'
                           }
                           className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-                            isPending && !isApproving
+                            canApprove && !isApproving
                               ? 'text-green-700 bg-green-50 hover:bg-green-100'
                               : 'text-gray-300 bg-gray-50 cursor-not-allowed'
                           }`}
