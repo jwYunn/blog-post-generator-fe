@@ -1,0 +1,20 @@
+# Reinstalled inside the image for the target platform
+node_modules
+
+# Built inside the image
+dist
+
+.git
+.gitignore
+.github
+
+# Vite bakes these at build time; the image gets them as build args instead
+.env
+.env.*
+!.env.example
+
+docs
+*.md
+.claude
+coverage
+*.log
