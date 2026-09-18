@@ -29,6 +29,7 @@ topicSeedApi.generate(id: string): Promise<GenerateResponse>
 
 topicSeedApi.evaluate(id: string): Promise<EvaluateResponse>
 // POST /topic-seeds/:id/evaluate
+// Re-scoring only - the server chains an evaluation after every generate
 ```
 
 ---
@@ -39,8 +40,8 @@ topicSeedApi.evaluate(id: string): Promise<EvaluateResponse>
 topicCandidateApi.getList(params: TopicCandidateListParams): Promise<TopicCandidateListResponse>
 // GET /topic-candidates
 
-topicCandidateApi.updateStatus(id: string, body: UpdateTopicCandidateStatusRequest): Promise<TopicCandidate>
-// PATCH /topic-candidates/:id/status
+topicCandidateApi.updateStatus(id: string, body: UpdateTopicCandidateStatusRequest): Promise<UpdateTopicCandidateStatusResponse>
+// PATCH /topic-candidates/:id/status - approve returns the draft it created or found
 
 topicCandidateApi.fetchSeedCandidates(seedId: string, query: CandidateListQuery): Promise<PaginatedCandidates>
 // GET /topic-seeds/:seedId/candidates
@@ -57,8 +58,9 @@ articleDraftApi.getList(params: ArticleDraftListParams): Promise<PaginatedArticl
 articleDraftApi.getOne(id: string): Promise<ArticleDraft>
 // GET /article-drafts/:id
 
-articleDraftApi.publishDraft(id: string, dto: CreatePublishJobDto): Promise<{ jobId: string }>
-// POST /article-drafts/:id/publish
+articleDraftApi.publishDraft(id: string, dto: CreatePublishJobDto): Promise<PublishJobResponse>
+// POST /article-drafts/:id/publish - writes an "attempting" record before queueing;
+// 409 while any earlier attempt is "attempting" or "published"
 
 articleDraftApi.getPublishRecords(draftId: string): Promise<{ data: PublishRecord[]; total: number; page: number; limit: number }>
 // GET /article-drafts/:draftId/publish-records
@@ -76,7 +78,7 @@ publishRecordsApi.create(payload: CreatePublishRecordPayload): Promise<PublishRe
 // POST /article-publish-records
 
 publishRecordsApi.update(id: string, payload: UpdatePublishRecordPayload): Promise<PublishRecord>
-// PATCH /article-publish-records/:id
+// PATCH /article-publish-records/:id - setting status "failed" on an attempt unblocks republishing
 
 publishRecordsApi.remove(id: string): Promise<void>
 // DELETE /article-publish-records/:id
@@ -187,6 +189,7 @@ interface EvaluateResponse { message: string; seedId: string }
 type TopicCandidateStatus = 'pending' | 'approved' | 'rejected'
 
 interface EvaluationDetail {
+  search_demand: number
   search_intent_clarity: number
   topic_specificity: number
   seo_title_quality: number
@@ -206,7 +209,7 @@ interface TopicCandidate {
   targetReader: string | null
   whyThisTopic: string | null
   outlinePreview: string[] | null
-  overallScore: number | null       // decimal, e.g. 8.9
+  overallScore: string | null       // Postgres decimal, arrives as a string e.g. "85.50"
   rank: number | null
   strengths: string[] | null
   weaknesses: string[] | null
@@ -224,7 +227,7 @@ interface TopicCandidateListParams {
   keyword?: string
   minScore?: number
   maxScore?: number
-  sortBy?: 'createdAt' | 'score' | 'overallScore' | 'rank'
+  sortBy?: 'createdAt' | 'score' | 'title' | 'overallScore' | 'rank'
   sortOrder?: 'ASC' | 'DESC'
 }
 
@@ -238,6 +241,18 @@ interface TopicCandidateListResponse {
 interface UpdateTopicCandidateStatusRequest {
   status: 'approved' | 'rejected'
 }
+
+interface ApproveCandidateResponse {
+  id: string
+  status: 'approved'
+  articleDraftId: string        // created, or the draft the candidate already had
+  articleDraftCreated: boolean
+  pipelineQueued: boolean       // false when an existing draft was left alone
+}
+
+interface RejectCandidateResponse { id: string; status: 'rejected' }
+
+type UpdateTopicCandidateStatusResponse = ApproveCandidateResponse | RejectCandidateResponse
 ```
 
 ---
@@ -313,15 +328,28 @@ interface CreatePublishJobDto {
   scheduledAt?: string  // ISO 8601, required when mode='schedule'
 }
 
+interface PublishJobResponse { jobId: string; publishRecordId: string }
+
+// attempting: outcome unknown, a post may be live - blocks republishing until a person resolves it
+// published: blocks republishing | failed: nothing was posted, retry is safe
+type PublishRecordStatus = 'attempting' | 'published' | 'failed'
+
 interface PublishRecord {
   id: string
   draftId: string
-  draft?: { id: string; title: string; status: ArticleDraftStatus }
+  draft?: ArticleDraft          // joined on list endpoints only
+  status: PublishRecordStatus
+  blogName: string | null
   permalink: string | null
   schedule: { mode: 'now' } | { mode: 'schedule'; scheduledAt: string } | null
   meta: Record<string, unknown> | null
   createdAt: string
 }
+
+// True while the worker is still expected to settle an "attempting" record on
+// its own. A failed draft updated after the attempt means the run is over and
+// the attempt is stuck; an attempt newer than the draft is a queued retry.
+function isAttemptInFlight(record, draft): boolean
 ```
 
 ---

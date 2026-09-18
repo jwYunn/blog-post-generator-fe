@@ -12,6 +12,8 @@ Used for async backend jobs that take time to complete. There are two variants:
 
 Used when there's no explicit "done" status on the primary list query. Detects completion by comparing a count before and after.
 
+> TopicCandidatePage goes one step further: the server chains scoring after generation, so when the count rises it keeps polling as "scoring" until rows are rewritten after a timestamp baseline. See [Pages](pages.md#topiccandidatepage).
+
 ```typescript
 const POLL_INTERVAL_MS = 3_000
 const POLL_TIMEOUT_MS = 120_000
@@ -204,7 +206,14 @@ addToast('Something went wrong.', 'error')
 <ToastContainer toasts={toasts} onRemove={removeToast} />
 ```
 
-Toasts auto-dismiss after 3.5 seconds.
+Toasts auto-dismiss after 3.5 seconds. Pass an action as the third argument to offer a next step; those stay for 8 seconds:
+
+```typescript
+addToast('Approved — article generation started', 'success', {
+  label: 'Open draft',
+  onClick: () => navigate(`/article-drafts/${result.articleDraftId}`),
+})
+```
 
 ---
 

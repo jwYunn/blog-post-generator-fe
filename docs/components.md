@@ -24,7 +24,7 @@ Fixed-position toast container. Renders a stack of toast messages.
 }
 ```
 
-Used in every page via the `useToast()` hook. See [Patterns](patterns.md) for usage.
+Used in every page via the `useToast()` hook. A toast may carry an `action` (`{ label, onClick }`), rendered as a button that also dismisses it. See [Patterns](patterns.md) for usage.
 
 ---
 
@@ -146,6 +146,8 @@ Table of topic candidates with evaluation data, sorting, and approval action.
   params: TopicCandidateListParams
   onSort: (sortBy: 'overallScore' | 'rank' | 'createdAt') => void
   onRetry: () => void
+  onApproved: (result: ApproveCandidateResponse) => void   // page toasts an "Open draft" link
+  onApproveError: (message: string) => void
 }
 ```
 
@@ -153,7 +155,7 @@ Columns: Title, Keyword, Score, Rank, Verdict, Detail, Status, Approve
 
 - **Detail** column: opens a modal showing `whyThisTopic`, `outlinePreview`, `searchIntent`, `targetReader`, `strengths`, `weaknesses`
 - **Verdict** badge: `keep` (emerald), `consider` (amber), `drop` (red)
-- **Approve** button: visible only for `pending` candidates; triggers `PATCH /topic-candidates/:id/status`
+- **Approve** button: enabled for `pending` and `rejected` candidates; triggers `PATCH /topic-candidates/:id/status` and hands the result to `onApproved`
 - Score and Rank columns are sortable
 
 ---
@@ -205,6 +207,7 @@ Interactive horizontal pipeline showing 4 steps: Outline → Content → Thumbna
 ```typescript
 {
   status: ArticleDraftStatus
+  failedStage: FailedStage | null   // 'outline' | 'content' | 'thumbnail' | 'publish'; read only when failed
   selectedStep: StepKey | null
   availableSteps: StepKey[]
   onSelectStep: (step: StepKey) => void
@@ -212,6 +215,8 @@ Interactive horizontal pipeline showing 4 steps: Outline → Content → Thumbna
 ```
 
 - Steps are clickable only when in `availableSteps`
+- A failed draft marks `failedStage` with ✕ and the steps before it as done; `'publish'` (or `null`, a queued retry) shows every step done
+- `publishing` shows every step done, like `review_ready`
 - Connectors animate based on step completion
 - Active step is highlighted
 
@@ -309,3 +314,29 @@ Create / Edit modal for publish records (used in PublishHistoryPage).
 **Fields**: draftId (combobox, create only), permalink (URL), scheduleMode (none/now/schedule), scheduledAt (datetime, conditional)
 
 **Zod validation**: Requires `scheduledAt` when `scheduleMode === 'schedule'`.
+
+---
+
+### PublishRecordStatusBadge (`src/components/article-draft/PublishRecordStatusBadge.tsx`)
+
+Badge for `PublishRecordStatus` (`attempting` amber, `published` green, `failed` red), driven by a `STATUS_CONFIG` map.
+
+---
+
+### ResolveAttemptDialog (`src/components/article-draft/ResolveAttemptDialog.tsx`)
+
+Settles a publish attempt that never reported back. Only someone looking at the blog can tell whether the post went up.
+
+**Props**
+```typescript
+{
+  record: PublishRecord | null   // null = closed
+  draftTitle?: string            // falls back to record.draft?.title
+  onClose: () => void
+  onResolved: () => void         // caller invalidates its record queries
+}
+```
+
+- "It is not on the blog" → `PATCH { status: 'failed' }`, which lets the draft be published again
+- "It is on the blog" → optional permalink (Zod URL) → `PATCH { status: 'published', permalink }`
+- The draft's own status is not changed by either
