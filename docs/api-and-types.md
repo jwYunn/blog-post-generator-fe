@@ -10,7 +10,10 @@ All API calls are centralized in `src/api/`. Each file exports a single object w
 
 ```typescript
 topicSeedApi.getList(params: TopicSeedListParams): Promise<TopicSeedListResponse>
-// GET /topic-seeds
+// GET /topic-seeds - the server caps limit at 100
+
+topicSeedApi.getAll(): Promise<TopicSeed[]>
+// GET /topic-seeds, every page of 100 - first page for the total, the rest in parallel
 
 topicSeedApi.getOne(id: string): Promise<TopicSeed>
 // GET /topic-seeds/:id
