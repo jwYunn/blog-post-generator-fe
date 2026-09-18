@@ -223,7 +223,7 @@ export default function ApiSourcePage() {
 
   return (
     <>
-      <main className="max-w-5xl mx-auto px-8 py-8">
+      <main className="max-w-5xl mx-auto px-4 sm:px-8 py-8">
         {/* Header */}
         <div className="flex items-start justify-between mb-6">
           <div>
@@ -313,7 +313,7 @@ export default function ApiSourcePage() {
 
                       {/* Actions */}
                       <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
+                        <div className="flex items-center gap-1 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity justify-end">
                           <button
                             onClick={() => setFormTarget(source)}
                             title="Edit"

@@ -297,7 +297,7 @@ export default function ThumbnailGeneratorPage() {
   // ─── 렌더 ────────────────────────────────────────────────────────────────────
   return (
     <>
-      <main className="max-w-[1200px] mx-auto px-8 py-8 space-y-8">
+      <main className="max-w-[1200px] mx-auto px-4 sm:px-8 py-8 space-y-8">
 
         {/* 페이지 헤더 */}
         <div className="flex items-start justify-between">

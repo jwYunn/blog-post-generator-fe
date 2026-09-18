@@ -247,7 +247,7 @@ export default function TopicSeedTable({
 
                   {/* Actions */}
                   <td className="px-4 py-3.5">
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={(e) => { e.stopPropagation(); onEdit(seed); }}
                         title="Edit"

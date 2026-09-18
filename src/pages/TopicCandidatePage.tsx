@@ -204,7 +204,7 @@ export default function TopicCandidatePage() {
   // ─── 렌더 ────────────────────────────────────────────────────────────────────
   return (
     <>
-      <main className="max-w-[1440px] mx-auto px-8 py-8">
+      <main className="max-w-[1440px] mx-auto px-4 sm:px-8 py-8">
         {/* 페이지 타이틀 */}
         <div className="flex items-start justify-between mb-6">
           <div>
