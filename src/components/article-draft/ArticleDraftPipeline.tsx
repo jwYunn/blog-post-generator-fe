@@ -4,9 +4,12 @@ import type { ArticleDraftStatus } from '../../types/articleDraft';
 
 export type StepKey = 'outline' | 'content' | 'thumbnail' | 'review';
 
+/** Where a failed draft stopped: a generation step, or on the way to the blog */
+export type FailedStage = 'outline' | 'content' | 'thumbnail' | 'publish';
+
 // ─── Internal types ───────────────────────────────────────────────────────────
 
-type StepState = 'done' | 'active' | 'pending';
+type StepState = 'done' | 'active' | 'pending' | 'failed';
 
 interface PipelineStep {
   key: StepKey;
@@ -39,16 +42,21 @@ const ACTIVE_STATUSES: ArticleDraftStatus[] = [
   'generating_thumbnail',
 ];
 
-function buildSteps(status: ArticleDraftStatus): PipelineStep[] {
+function buildSteps(status: ArticleDraftStatus, failedStage: FailedStage | null): PipelineStep[] {
   const stepIndex = STATUS_TO_STEP_INDEX[status] ?? -1;
   const isActive  = ACTIVE_STATUSES.includes(status);
   const isFailed  = status === 'failed';
+  // A publish failure (or a retry waiting to start) left every step finished
+  const failedIndex =
+    failedStage === null || failedStage === 'publish'
+      ? STEPS.length
+      : STEPS.findIndex((step) => step.key === failedStage);
 
   return STEPS.map(({ key, label }, i) => {
     let state: StepState;
 
     if (isFailed) {
-      state = 'pending';
+      state = i < failedIndex ? 'done' : i === failedIndex ? 'failed' : 'pending';
     } else if (i < stepIndex) {
       state = 'done';
     } else if (i === stepIndex) {
@@ -66,8 +74,8 @@ function buildSteps(status: ArticleDraftStatus): PipelineStep[] {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function StepIcon({ state, failed }: { state: StepState; failed?: boolean }) {
-  if (failed) {
+function StepIcon({ state }: { state: StepState }) {
+  if (state === 'failed') {
     return (
       <span className="w-5 h-5 rounded-full bg-red-100 border-2 border-red-400 flex items-center justify-center text-red-500 text-[10px] font-bold">
         ✕
@@ -103,6 +111,8 @@ function Connector({ done }: { done: boolean }) {
 
 interface Props {
   status: ArticleDraftStatus;
+  /** Only read when status is failed; null means nothing is marked as the failed step */
+  failedStage: FailedStage | null;
   selectedStep: StepKey | null;
   availableSteps: StepKey[];
   onSelectStep: (step: StepKey) => void;
@@ -110,12 +120,14 @@ interface Props {
 
 export default function ArticleDraftPipeline({
   status,
+  failedStage,
   selectedStep,
   availableSteps,
   onSelectStep,
 }: Props) {
-  const steps    = buildSteps(status);
+  const steps    = buildSteps(status, failedStage);
   const isFailed = status === 'failed';
+  const failedLabel = STEPS.find((step) => step.key === failedStage)?.label;
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 px-6 py-4">
@@ -144,7 +156,7 @@ export default function ArticleDraftPipeline({
                     isAvailable && !isSelected ? 'group-hover:scale-110' : ''
                   }`}
                 >
-                  <StepIcon state={step.state} failed={isFailed && i === 0} />
+                  <StepIcon state={step.state} />
                 </div>
 
                 {/* Label */}
@@ -173,7 +185,7 @@ export default function ArticleDraftPipeline({
               {/* Connector */}
               {i < steps.length - 1 && (
                 <div className="flex-1 pt-2.5 mx-1">
-                  <Connector done={step.state === 'done' && !isFailed} />
+                  <Connector done={step.state === 'done'} />
                 </div>
               )}
             </div>
@@ -181,9 +193,11 @@ export default function ArticleDraftPipeline({
         })}
       </div>
 
-      {isFailed && (
+      {isFailed && failedStage && (
         <p className="mt-3 text-xs text-red-500 text-center">
-          Pipeline stopped — see error details below
+          {failedStage === 'publish'
+            ? 'Article is complete, but publishing failed — see error details below'
+            : `Pipeline stopped at ${failedLabel} — see error details below`}
         </p>
       )}
     </div>

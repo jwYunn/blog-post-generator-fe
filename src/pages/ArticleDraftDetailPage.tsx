@@ -3,11 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, AlertTriangle, RefreshCw, Copy, Check, ExternalLink, Send } from 'lucide-react';
 import { articleDraftApi } from '../api/articleDrafts';
-import { IN_PROGRESS_STATUSES } from '../types/articleDraft';
-import type { ArticleDraft, ArticleDraftStatus, PublishRecord } from '../types/articleDraft';
+import { IN_PROGRESS_STATUSES, isAttemptInFlight } from '../types/articleDraft';
+import type { ArticleDraft, PublishRecord } from '../types/articleDraft';
 import ArticleDraftStatusBadge from '../components/article-draft/ArticleDraftStatusBadge';
 import ArticleDraftPipeline from '../components/article-draft/ArticleDraftPipeline';
-import type { StepKey } from '../components/article-draft/ArticleDraftPipeline';
+import type { FailedStage, StepKey } from '../components/article-draft/ArticleDraftPipeline';
 import ArticleDraftOutlineSection from '../components/article-draft/ArticleDraftOutlineSection';
 import ArticleDraftContentSection from '../components/article-draft/ArticleDraftContentSection';
 import HashtagsSection from '../components/article-draft/HashtagsSection';
@@ -20,15 +20,16 @@ import ResolveAttemptDialog from '../components/article-draft/ResolveAttemptDial
 const POLL_INTERVAL_MS = 3_000;
 
 /**
- * A publish attempt the worker is still expected to resolve on its own. Once
- * the draft has failed, an attempt still marked "attempting" is stuck - a
- * person has to check the blog - so there is nothing to wait for.
+ * Where a failed draft stopped. Attempt records only exist once Publish was
+ * pressed, so a failed draft that has one failed on its way to the blog; any
+ * other failure is the first generation step that left nothing behind.
  */
-function isAttemptInFlight(
-  record: PublishRecord | undefined,
-  draftStatus: ArticleDraftStatus | undefined,
-): boolean {
-  return record?.status === 'attempting' && draftStatus !== undefined && draftStatus !== 'failed';
+function getFailedStage(draft: ArticleDraft, hasPublishRecords: boolean): FailedStage | null {
+  if (draft.status !== 'failed') return null;
+  if (hasPublishRecords) return 'publish';
+  if (!draft.outline) return 'outline';
+  if (!draft.content) return 'content';
+  return 'thumbnail';
 }
 
 function formatDate(dateStr: string): string {
@@ -45,11 +46,11 @@ function formatDate(dateStr: string): string {
 
 function PublishRecordsSection({
   records,
-  draftStatus,
+  draft,
   onResolve,
 }: {
   records: PublishRecord[];
-  draftStatus: ArticleDraftStatus;
+  draft: ArticleDraft;
   onResolve: (record: PublishRecord) => void;
 }) {
   if (records.length === 0) return null;
@@ -94,7 +95,7 @@ function PublishRecordsSection({
               {/* Status + createdAt */}
               <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
                 <div className="flex items-center gap-2">
-                  {rec.status === 'attempting' && !isAttemptInFlight(rec, draftStatus) && (
+                  {rec.status === 'attempting' && !isAttemptInFlight(rec, draft) && (
                     <button
                       onClick={() => onResolve(rec)}
                       className="px-2 py-0.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-md hover:bg-amber-100 transition-colors"
@@ -292,8 +293,8 @@ export default function ArticleDraftDetailPage() {
     enabled:  !!id,
     staleTime: 30_000,
     refetchInterval: (query) => {
-      const draftStatus = queryClient.getQueryData<ArticleDraft>(['article-draft', id])?.status;
-      return isAttemptInFlight(query.state.data?.data[0], draftStatus) ? POLL_INTERVAL_MS : false;
+      const cachedDraft = queryClient.getQueryData<ArticleDraft>(['article-draft', id]);
+      return isAttemptInFlight(query.state.data?.data[0], cachedDraft) ? POLL_INTERVAL_MS : false;
     },
   });
   const publishRecords: PublishRecord[] = publishRecordsData?.data ?? [];
@@ -304,15 +305,17 @@ export default function ArticleDraftDetailPage() {
     queryFn:  () => articleDraftApi.getOne(id!),
     enabled:  !!id,
     refetchInterval: (query) => {
-      const status = query.state.data?.status;
-      if (!status) return false;
-      return IN_PROGRESS_STATUSES.includes(status) || isAttemptInFlight(latestRecord, status)
+      const current = query.state.data;
+      if (!current) return false;
+      return IN_PROGRESS_STATUSES.includes(current.status) || isAttemptInFlight(latestRecord, current)
         ? POLL_INTERVAL_MS
         : false;
     },
   });
 
   // 현재 데이터가 있는 단계 목록
+  const failedStage = draft ? getFailedStage(draft, publishRecords.length > 0) : null;
+
   const availableSteps = useMemo<StepKey[]>(() => {
     if (!draft) return [];
     const steps: StepKey[] = [];
@@ -320,9 +323,15 @@ export default function ArticleDraftDetailPage() {
     if (draft.content)            steps.push('content');
     if (draft.thumbnailImageUrl)  steps.push('thumbnail');
     // Publishing works from the finished article, so it stays reviewable
-    if (draft.status === 'review_ready' || draft.status === 'publishing') steps.push('review');
+    if (
+      draft.status === 'review_ready' ||
+      draft.status === 'publishing' ||
+      failedStage === 'publish'
+    ) {
+      steps.push('review');
+    }
     return steps;
-  }, [draft]);
+  }, [draft, failedStage]);
 
   // 새 단계가 생기면 가장 앞선 단계로 자동 이동 (이미 선택한 게 유효하면 유지)
   useEffect(() => {
@@ -369,14 +378,20 @@ export default function ArticleDraftDetailPage() {
   // The server refuses a new publish while any attempt is live or unresolved.
   // Waiting for the records keeps the button from flashing up and then 409ing.
   const hasBlockingRecord = publishRecords.some((r) => r.status !== 'failed');
+  // A publish that failed before posting can be retried from the same article;
+  // a draft that failed while being written has nothing to publish
+  const isPublishRetry = failedStage === 'publish' && !!draft.content;
   const canPublish =
-    draft.status === 'review_ready' && !publishRecordsPending && !hasBlockingRecord;
+    (draft.status === 'review_ready' || isPublishRetry) &&
+    !publishRecordsPending &&
+    !hasBlockingRecord;
   // Requested, but the worker has not moved the draft to "publishing" yet
   const isPublishQueued =
-    draft.status === 'review_ready' && latestRecord?.status === 'attempting';
+    (draft.status === 'review_ready' || draft.status === 'failed') &&
+    isAttemptInFlight(latestRecord, draft);
   // An attempt nobody is going to resolve but a person
   const stuckAttempt = publishRecords.find(
-    (r) => r.status === 'attempting' && !isAttemptInFlight(r, draft.status),
+    (r) => r.status === 'attempting' && !isAttemptInFlight(r, draft),
   );
 
   // ─── Render ───────────────────────────────────────────────────────────────
@@ -399,7 +414,7 @@ export default function ArticleDraftDetailPage() {
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                 >
                   <Send className="w-3.5 h-3.5" />
-                  Publish
+                  {isPublishRetry ? 'Retry Publish' : 'Publish'}
                 </button>
               )}
               <ArticleDraftStatusBadge status={draft.status} />
@@ -452,17 +467,20 @@ export default function ArticleDraftDetailPage() {
             {/* ── Pipeline (클릭 가능) ──────────────────────────────────────── */}
             <ArticleDraftPipeline
               status={draft.status}
+              failedStage={isPublishQueued ? null : failedStage}
               selectedStep={selectedStep}
               availableSteps={availableSteps}
               onSelectStep={setSelectedStep}
             />
 
             {/* ── Error section (failed 일 때만) ────────────────────────────── */}
-            {draft.status === 'failed' && draft.errorMessage && (
+            {draft.status === 'failed' && draft.errorMessage && !isPublishQueued && (
               <div className="bg-white rounded-xl border border-red-200 overflow-hidden">
                 <div className="flex items-center gap-3 px-6 py-4 bg-red-50 border-b border-red-100">
                   <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" />
-                  <h2 className="text-sm font-semibold text-red-700">Generation Error</h2>
+                  <h2 className="text-sm font-semibold text-red-700">
+                    {failedStage === 'publish' ? 'Publish Error' : 'Generation Error'}
+                  </h2>
                 </div>
                 <div className="px-6 py-4">
                   <p className="text-sm text-red-600 leading-relaxed">{draft.errorMessage}</p>
@@ -482,7 +500,7 @@ export default function ArticleDraftDetailPage() {
         {/* ── Publish Records (every attempt, whatever the draft status) ──── */}
         <PublishRecordsSection
           records={publishRecords}
-          draftStatus={draft.status}
+          draft={draft}
           onResolve={setResolveTarget}
         />
       </div>

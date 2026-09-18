@@ -103,3 +103,23 @@ export interface ArticleDraftListParams {
   sortBy?: 'createdAt' | 'updatedAt';
   sortOrder?: 'ASC' | 'DESC';
 }
+
+// ─── Publish attempt state ────────────────────────────────────────────────────
+
+/**
+ * Whether an "attempting" record is one the worker will still resolve on its
+ * own, as opposed to one a person has to settle by checking the blog.
+ *
+ * The worker marks the draft failed after the attempt was written, so a failed
+ * draft updated later than its attempt means the run is over and the attempt
+ * is stuck. An attempt newer than the draft's last update is a retry the worker
+ * has not picked up yet - the draft only leaves "failed" once it does.
+ */
+export function isAttemptInFlight(
+  record: Pick<PublishRecord, 'status' | 'createdAt'> | undefined,
+  draft: Pick<ArticleDraft, 'status' | 'updatedAt'> | undefined,
+): boolean {
+  if (record?.status !== 'attempting' || !draft) return false;
+  if (draft.status !== 'failed') return true;
+  return Date.parse(record.createdAt) > Date.parse(draft.updatedAt);
+}

@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Globe, Plus, Pencil, Trash2 } from 'lucide-react';
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react';
 import { publishRecordsApi } from '../api/publishRecords';
+import { isAttemptInFlight } from '../types/articleDraft';
 import type { PublishRecord, PublishRecordStatus } from '../types/articleDraft';
 import { useToast } from '../hooks/useToast';
 import ToastContainer from '../components/Toast';
@@ -318,8 +319,8 @@ export default function PublishHistoryPage() {
                             {/* Actions */}
                             <td className="px-4 py-4">
                               <div className="flex items-center gap-1">
-                                {/* Draft failed = the worker is done with it, so only a person can settle it */}
-                                {record.status === 'attempting' && record.draft?.status === 'failed' && (
+                                {/* Stuck: the worker is done with it, so only a person can settle it */}
+                                {record.status === 'attempting' && record.draft && !isAttemptInFlight(record, record.draft) && (
                                   <button
                                     onClick={() => setResolveTarget(record)}
                                     className="mr-1 px-2 py-1 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-md hover:bg-amber-100 transition-colors"
