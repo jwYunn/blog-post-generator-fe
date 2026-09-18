@@ -117,7 +117,23 @@ jobs:
             # Served from inside the compose network, which is how the backend's
             # nginx reaches it. Going through the public URL would hit Cloudflare
             # Access and come back as a login page.
-            docker compose exec -T nginx wget --spider -q http://fe/
+            #
+            # Polled rather than checked once: a recreated container reports
+            # "Started" as soon as its process launches, before nginx inside it
+            # is listening, so a single check right after `up` races the startup
+            # and fails with "connection refused" on a healthy deploy.
+            for i in $(seq 1 15); do
+              if docker compose exec -T nginx wget --spider -q http://fe/; then
+                echo "fe is serving"
+                break
+              fi
+              if [ "$i" -eq 15 ]; then
+                echo "fe did not answer within 30s"
+                docker compose logs --tail 50 fe
+                exit 1
+              fi
+              sleep 2
+            done
 
             docker image prune -f
             docker compose ps fe
