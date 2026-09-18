@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { RefreshCw, Info, X, Tag, Target, Calendar, BookOpen, CheckCircle, Loader2, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
+import { RefreshCw, Info, X, Tag, Target, Calendar, BookOpen, CheckCircle, Loader2, ArrowUp, ArrowDown, ArrowUpDown, FileText, Sprout } from 'lucide-react';
 import axios from 'axios';
 import type {
   ApproveCandidateResponse,
@@ -184,6 +185,33 @@ function ApproveButton({
   );
 }
 
+// An approved candidate's next step is its draft, so this takes the Approve slot
+function DraftLink({ draftId, className }: { draftId: string; className: string }) {
+  return (
+    <Link
+      to={`/article-drafts/${draftId}`}
+      title="Open the article draft"
+      className={`inline-flex items-center gap-1 rounded-md font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-colors ${className}`}
+    >
+      <FileText className="w-3.5 h-3.5" />
+      Draft
+    </Link>
+  );
+}
+
+function SeedLink({ seedId, name }: { seedId: string; name: string | undefined }) {
+  return (
+    <Link
+      to={`/topic-candidates?seedId=${seedId}`}
+      title="Show this seed's candidates"
+      className="inline-flex items-center gap-1 max-w-full mt-1 text-xs text-gray-400 hover:text-blue-600 transition-colors"
+    >
+      <Sprout className="w-3 h-3 flex-shrink-0" />
+      <span className="truncate">{name ?? seedId.slice(0, 8)}</span>
+    </Link>
+  );
+}
+
 // ─── Error / Empty states (shared by table and card list) ─────────────────────
 
 function ErrorState({ onRetry }: { onRetry: () => void }) {
@@ -217,11 +245,13 @@ function EmptyState() {
 
 function CandidateCard({
   candidate,
+  seedNames,
   isApproving,
   onDetail,
   onApprove,
 }: {
   candidate: TopicCandidate;
+  seedNames: Map<string, string> | undefined;
   isApproving: boolean;
   onDetail: () => void;
   onApprove: () => void;
@@ -232,7 +262,12 @@ function CandidateCard({
   return (
     <li className="px-4 py-4">
       <div className="flex items-start justify-between gap-3">
-        <p className="min-w-0 font-medium text-gray-900 leading-snug break-words">{candidate.title}</p>
+        <div className="min-w-0">
+          <p className="font-medium text-gray-900 leading-snug break-words">{candidate.title}</p>
+          {seedNames && (
+            <SeedLink seedId={candidate.topicSeedId} name={seedNames.get(candidate.topicSeedId)} />
+          )}
+        </div>
         {isEvaluated && (
           <div className="flex-shrink-0 text-right">
             <p className="text-sm font-semibold text-gray-800 tabular-nums">
@@ -254,12 +289,16 @@ function CandidateCard({
 
       <div className="flex items-center gap-2 mt-3">
         <DetailButton onClick={onDetail} className="flex-1 justify-center px-3 py-2 text-sm" />
-        <ApproveButton
-          canApprove={canApprove}
-          isApproving={isApproving}
-          onClick={onApprove}
-          className="flex-1 justify-center px-3 py-2 text-sm"
-        />
+        {candidate.articleDraftId ? (
+          <DraftLink draftId={candidate.articleDraftId} className="flex-1 justify-center px-3 py-2 text-sm" />
+        ) : (
+          <ApproveButton
+            canApprove={canApprove}
+            isApproving={isApproving}
+            onClick={onApprove}
+            className="flex-1 justify-center px-3 py-2 text-sm"
+          />
+        )}
       </div>
     </li>
   );
@@ -366,6 +405,8 @@ const MOBILE_SORT_OPTIONS: { column: SortableColumn; label: string }[] = [
 
 interface Props {
   data: TopicCandidate[];
+  /** Seed names by id - pass when the list spans every seed, to show whose each row is */
+  seedNames?: Map<string, string>;
   isLoading: boolean;
   isFetching: boolean;
   isError: boolean;
@@ -381,6 +422,7 @@ interface Props {
 
 export default function TopicCandidateTable({
   data,
+  seedNames,
   isLoading,
   isFetching,
   isError,
@@ -462,6 +504,7 @@ export default function TopicCandidateTable({
               <CandidateCard
                 key={candidate.id}
                 candidate={candidate}
+                seedNames={seedNames}
                 isApproving={approvingId === candidate.id}
                 onDetail={() => setDetailCandidate(candidate)}
                 onApprove={() => approveMutation.mutate(candidate.id)}
@@ -540,6 +583,14 @@ export default function TopicCandidateTable({
                       {/* Title */}
                       <td className="px-4 py-3.5">
                         <span className="font-medium text-gray-900">{candidate.title}</span>
+                        {seedNames && (
+                          <div>
+                            <SeedLink
+                              seedId={candidate.topicSeedId}
+                              name={seedNames.get(candidate.topicSeedId)}
+                            />
+                          </div>
+                        )}
                       </td>
 
                       {/* Search Intent */}
@@ -582,14 +633,18 @@ export default function TopicCandidateTable({
                         />
                       </td>
 
-                      {/* Approve button */}
+                      {/* Approve button, or the draft it became */}
                       <td className="px-4 py-3.5">
-                        <ApproveButton
-                          canApprove={canApprove}
-                          isApproving={isApproving}
-                          onClick={() => approveMutation.mutate(candidate.id)}
-                          className="px-2.5 py-1 text-xs"
-                        />
+                        {candidate.articleDraftId ? (
+                          <DraftLink draftId={candidate.articleDraftId} className="px-2.5 py-1 text-xs" />
+                        ) : (
+                          <ApproveButton
+                            canApprove={canApprove}
+                            isApproving={isApproving}
+                            onClick={() => approveMutation.mutate(candidate.id)}
+                            className="px-2.5 py-1 text-xs"
+                          />
+                        )}
                       </td>
 
                       {/* Score */}

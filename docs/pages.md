@@ -47,7 +47,8 @@ Generate topic candidates for a selected seed and approve them. Polling-based UI
 - `topicCandidateApi.updateStatus(id, { status: 'approved' })` — via `TopicCandidateTable`; the page toasts an "Open draft" link to the returned `articleDraftId`
 
 ### State
-- `seedId` from `useSearchParams` (`?seedId=`)
+- `seedId` from `useSearchParams` (`?seedId=`) — read straight from the URL, not copied into state, because the nav, seed rows and draft pages all link here while the page may already be mounted. A seed change resets to page 1 and stops any generate/score polling
+- `filters` — page, limit, status, sort (everything except the seed)
 - `isGenerating` / `isEvaluating` — polling active flags
 - `prevTotalRef` — ref to previous candidate count (generation completion detection)
 - `scoreBaselineRef` — latest timestamp on screen when scoring started (scoring completion detection)
@@ -60,6 +61,8 @@ Generate topic candidates for a selected seed and approve them. Polling-based UI
 
 ### Key Features
 - Seed context bar at top (category badge, priority, active status)
+- Unfiltered ("All seeds"), each row links to its seed under the title
+- Approved candidates show a **Draft** link (`articleDraftId`) in place of Approve
 - Generate and Re-score buttons side by side
 - Loading banners with cancel buttons during polling
 - Sorts candidates by rank/score by default after evaluation
@@ -127,6 +130,7 @@ Detailed view of a single draft with interactive pipeline visualization and cont
 
 ### Key Features
 - Copy title to clipboard button
+- Source line under the keyword: seed (links to `/topic-candidates?seedId=`) › original candidate title, from the `topicCandidate` the detail endpoint joins in
 - Error message display when `status === 'failed'`, titled Generation Error or Publish Error
 - Amber alert with a Resolve button when an attempt is stuck (blocks republishing)
 - "Publish requested" banner while an attempt waits for the worker

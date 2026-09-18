@@ -28,6 +28,8 @@ export interface TopicCandidate {
   weaknesses: string[] | null;
   verdict: 'keep' | 'consider' | 'drop' | null;
   evaluationDetail: EvaluationDetail | null;
+  /** The draft this candidate's approval made - set on list endpoints only */
+  articleDraftId?: string | null;
   createdAt: string;
   updatedAt: string;
 }

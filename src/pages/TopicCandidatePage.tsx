@@ -55,14 +55,16 @@ export default function TopicCandidatePage() {
   const generateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const evaluateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // URL ?seedId 를 초기값으로 사용
-  const [params, setParams] = useState<TopicCandidateListParams>(() => ({
+  // The seed filter lives only in the URL: the nav, seed rows and draft pages
+  // all link here, and the page stays mounted when one of them changes it
+  const seedId = searchParams.get('seedId') ?? undefined;
+  const [filters, setFilters] = useState<Omit<TopicCandidateListParams, 'topicSeedId'>>({
     page: 1,
     limit: 20,
     sortBy: 'createdAt',
     sortOrder: 'DESC',
-    topicSeedId: searchParams.get('seedId') ?? undefined,
-  }));
+  });
+  const params: TopicCandidateListParams = { ...filters, topicSeedId: seedId };
 
   // ─── 데이터 패칭 ─────────────────────────────────────────────────────────────
   const { data, isLoading, isFetching, isError, refetch } = useQuery({
@@ -103,6 +105,17 @@ export default function TopicCandidatePage() {
       addToast(`Scoring complete — ${rescored} candidate${rescored > 1 ? 's' : ''} scored`, 'success');
     }
   }, [data?.data, isEvaluating]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // A different seed starts on its first page, and polling for the previous
+  // one stops - its completion checks are measured against that seed's rows
+  const prevSeedIdRef = useRef(seedId);
+  useEffect(() => {
+    if (prevSeedIdRef.current === seedId) return;
+    prevSeedIdRef.current = seedId;
+    setFilters((prev) => ({ ...prev, page: 1 }));
+    stopGeneratePolling();
+    stopEvaluatePolling();
+  }, [seedId]);
 
   // 언마운트 시 타임아웃 정리
   useEffect(() => {
@@ -154,6 +167,11 @@ export default function TopicCandidatePage() {
     ? (seedsData?.data ?? []).find((s) => s.id === params.topicSeedId)
     : undefined;
 
+  // Rows from every seed need to say whose they are
+  const seedNames = params.topicSeedId
+    ? undefined
+    : new Map((seedsData?.data ?? []).map((s) => [s.id, s.seed]));
+
   // ─── Generate mutation ───────────────────────────────────────────────────────
   const generateMutation = useMutation({
     mutationFn: (seedId: string) => topicSeedApi.generate(seedId),
@@ -193,16 +211,12 @@ export default function TopicCandidatePage() {
   const isBusy = isGenerating || isEvaluating || generateMutation.isPending || evaluateMutation.isPending;
 
   // ─── 핸들러 ──────────────────────────────────────────────────────────────────
-  const handleFilterChange = (filters: Partial<TopicCandidateListParams>) => {
-    const next = { ...params, ...filters, page: 1 };
-    setParams(next);
+  const handleFilterChange = (changes: Partial<TopicCandidateListParams>) => {
+    const { topicSeedId, ...rest } = changes;
+    setFilters((prev) => ({ ...prev, ...rest, page: 1 }));
 
-    if ('topicSeedId' in filters) {
-      if (filters.topicSeedId) {
-        setSearchParams({ seedId: filters.topicSeedId }, { replace: true });
-      } else {
-        setSearchParams({}, { replace: true });
-      }
+    if ('topicSeedId' in changes) {
+      setSearchParams(topicSeedId ? { seedId: topicSeedId } : {}, { replace: true });
     }
   };
 
@@ -211,7 +225,7 @@ export default function TopicCandidatePage() {
   };
 
   const handleSort = (sortBy: SortableColumn) => {
-    setParams((prev) => ({
+    setFilters((prev) => ({
       ...prev,
       sortBy,
       sortOrder: prev.sortBy === sortBy && prev.sortOrder === 'DESC' ? 'ASC' : 'DESC',
@@ -232,7 +246,7 @@ export default function TopicCandidatePage() {
   };
 
   const handlePageChange = (page: number, limit: number) => {
-    setParams((prev) => ({ ...prev, page, limit }));
+    setFilters((prev) => ({ ...prev, page, limit }));
   };
 
   // ─── 렌더 ────────────────────────────────────────────────────────────────────
@@ -378,6 +392,7 @@ export default function TopicCandidatePage() {
         {/* 테이블 */}
         <TopicCandidateTable
           data={data?.data ?? []}
+          seedNames={seedNames}
           isLoading={isLoading}
           isFetching={isFetching || isGenerating || isEvaluating}
           isError={isError}

@@ -56,7 +56,7 @@ articleDraftApi.getList(params: ArticleDraftListParams): Promise<PaginatedArticl
 // GET /article-drafts
 
 articleDraftApi.getOne(id: string): Promise<ArticleDraft>
-// GET /article-drafts/:id
+// GET /article-drafts/:id - joins in topicCandidate (with its topicSeed); the list does not
 
 articleDraftApi.publishDraft(id: string, dto: CreatePublishJobDto): Promise<PublishJobResponse>
 // POST /article-drafts/:id/publish - writes an "attempting" record before queueing;
@@ -215,6 +215,7 @@ interface TopicCandidate {
   weaknesses: string[] | null
   verdict: 'keep' | 'consider' | 'drop' | null
   evaluationDetail: EvaluationDetail | null
+  articleDraftId?: string | null    // the draft its approval made - list endpoints only
   createdAt: string
   updatedAt: string
 }
@@ -294,6 +295,7 @@ interface ArticleOutline {
 interface ArticleDraft {
   id: string
   topicCandidateId: string
+  topicCandidate?: TopicCandidate & { topicSeed: TopicSeed }   // detail endpoint only
   title: string
   keyword: string
   status: ArticleDraftStatus
