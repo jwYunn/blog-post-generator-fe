@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { RefreshCw, Copy, Check } from 'lucide-react';
 import { articleDraftApi } from '../api/articleDrafts';
-import type { ArticleDraftListParams, ArticleDraftStatus } from '../types/articleDraft';
+import type { ArticleDraft, ArticleDraftListParams, ArticleDraftStatus } from '../types/articleDraft';
 import { IN_PROGRESS_STATUSES } from '../types/articleDraft';
 import ArticleDraftStatusBadge from '../components/article-draft/ArticleDraftStatusBadge';
 import PublishModal from '../components/article-draft/PublishModal';
@@ -67,6 +67,8 @@ const STATUS_FILTER_OPTIONS: { label: string; value: ArticleDraftStatus | undefi
   { label: 'Content Ready', value: 'content_generated' },
   { label: 'Generating Thumbnail', value: 'generating_thumbnail' },
   { label: 'Review Ready', value: 'review_ready' },
+  { label: 'Publishing', value: 'publishing' },
+  { label: 'Published', value: 'published' },
   { label: 'Failed', value: 'failed' },
 ];
 
@@ -118,13 +120,22 @@ export default function ArticleDraftListPage() {
     sortOrder: 'DESC',
   });
 
+  // Drafts published from this page that the worker has not picked up yet.
+  // They still read review_ready, so without this the list would neither poll
+  // nor stop offering a Publish button the server is about to refuse.
+  const [publishRequestedIds, setPublishRequestedIds] = useState<Set<string>>(() => new Set());
+  const isPublishQueued = (draft: ArticleDraft) =>
+    draft.status === 'review_ready' && publishRequestedIds.has(draft.id);
+
   const { data, isLoading, isFetching, isError, refetch } = useQuery({
     queryKey: ['article-drafts', params],
     queryFn: () => articleDraftApi.getList(params),
     // Poll every 3 s if there are any in-progress drafts visible
     refetchInterval: (query) => {
       const drafts = query.state.data?.data ?? [];
-      const hasInProgress = drafts.some((d) => IN_PROGRESS_STATUSES.includes(d.status));
+      const hasInProgress = drafts.some(
+        (d) => IN_PROGRESS_STATUSES.includes(d.status) || isPublishQueued(d),
+      );
       return hasInProgress ? 3_000 : false;
     },
   });
@@ -285,7 +296,12 @@ export default function ArticleDraftListPage() {
 
                     {/* Actions */}
                     <td className="px-4 py-4">
-                      {draft.status === 'review_ready' && (
+                      {isPublishQueued(draft) ? (
+                        <span className="inline-flex items-center gap-1.5 text-xs text-blue-600">
+                          <span className="w-3 h-3 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
+                          Queued
+                        </span>
+                      ) : draft.status === 'review_ready' && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -325,6 +341,10 @@ export default function ArticleDraftListPage() {
         draftTitle={publishModal?.draftTitle ?? ''}
         onClose={() => setPublishModal(null)}
         onSuccess={() => {
+          if (publishModal) {
+            const { draftId } = publishModal;
+            setPublishRequestedIds((prev) => new Set(prev).add(draftId));
+          }
           setPublishModal(null);
           queryClient.invalidateQueries({ queryKey: ['article-drafts'] });
         }}

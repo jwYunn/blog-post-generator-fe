@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, AlertTriangle, RefreshCw, Copy, Check, ExternalLink, Send } from 'lucide-react';
 import { articleDraftApi } from '../api/articleDrafts';
 import { IN_PROGRESS_STATUSES } from '../types/articleDraft';
-import type { ArticleDraft, PublishRecord } from '../types/articleDraft';
+import type { ArticleDraft, ArticleDraftStatus, PublishRecord } from '../types/articleDraft';
 import ArticleDraftStatusBadge from '../components/article-draft/ArticleDraftStatusBadge';
 import ArticleDraftPipeline from '../components/article-draft/ArticleDraftPipeline';
 import type { StepKey } from '../components/article-draft/ArticleDraftPipeline';
@@ -14,6 +14,20 @@ import HashtagsSection from '../components/article-draft/HashtagsSection';
 import PublishModal from '../components/article-draft/PublishModal';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+
+const POLL_INTERVAL_MS = 3_000;
+
+/**
+ * A publish attempt the worker is still expected to resolve on its own. Once
+ * the draft has failed, an attempt still marked "attempting" is stuck - a
+ * person has to check the blog - so there is nothing to wait for.
+ */
+function isAttemptInFlight(
+  record: PublishRecord | undefined,
+  draftStatus: ArticleDraftStatus | undefined,
+): boolean {
+  return record?.status === 'attempting' && draftStatus !== undefined && draftStatus !== 'failed';
+}
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleString('en-US', {
@@ -244,24 +258,35 @@ export default function ArticleDraftDetailPage() {
   const [selectedStep, setSelectedStep] = useState<StepKey | null>(null);
   const [publishModalOpen, setPublishModalOpen] = useState(false);
 
+  // Every attempt, not only successful ones. A publish request leaves the draft
+  // at review_ready until the worker picks it up, so the attempt record is the
+  // only sign that one is under way - and an attempt that never reported back
+  // is what blocks the next publish.
+  const { data: publishRecordsData, isPending: publishRecordsPending } = useQuery({
+    queryKey: ['article-draft-publish-records', id],
+    queryFn:  () => articleDraftApi.getPublishRecords(id!),
+    enabled:  !!id,
+    staleTime: 30_000,
+    refetchInterval: (query) => {
+      const draftStatus = queryClient.getQueryData<ArticleDraft>(['article-draft', id])?.status;
+      return isAttemptInFlight(query.state.data?.data[0], draftStatus) ? POLL_INTERVAL_MS : false;
+    },
+  });
+  const publishRecords: PublishRecord[] = publishRecordsData?.data ?? [];
+  const latestRecord = publishRecords[0];
+
   const { data: draft, isLoading, isError, refetch } = useQuery({
     queryKey: ['article-draft', id],
     queryFn:  () => articleDraftApi.getOne(id!),
     enabled:  !!id,
     refetchInterval: (query) => {
       const status = query.state.data?.status;
-      return status && IN_PROGRESS_STATUSES.includes(status) ? 3_000 : false;
+      if (!status) return false;
+      return IN_PROGRESS_STATUSES.includes(status) || isAttemptInFlight(latestRecord, status)
+        ? POLL_INTERVAL_MS
+        : false;
     },
   });
-
-  // 발행 내역 (published 상태일 때만 조회)
-  const { data: publishRecordsData } = useQuery({
-    queryKey: ['article-draft-publish-records', id],
-    queryFn:  () => articleDraftApi.getPublishRecords(id!),
-    enabled:  !!id && draft?.status === 'published',
-    staleTime: 30_000,
-  });
-  const publishRecords: PublishRecord[] = publishRecordsData?.data ?? [];
 
   // 현재 데이터가 있는 단계 목록
   const availableSteps = useMemo<StepKey[]>(() => {
@@ -270,7 +295,8 @@ export default function ArticleDraftDetailPage() {
     if (draft.outline)            steps.push('outline');
     if (draft.content)            steps.push('content');
     if (draft.thumbnailImageUrl)  steps.push('thumbnail');
-    if (draft.status === 'review_ready') steps.push('review');
+    // Publishing works from the finished article, so it stays reviewable
+    if (draft.status === 'review_ready' || draft.status === 'publishing') steps.push('review');
     return steps;
   }, [draft]);
 
@@ -316,6 +342,15 @@ export default function ArticleDraftDetailPage() {
 
   const isInProgress = IN_PROGRESS_STATUSES.includes(draft.status);
 
+  // The server refuses a new publish while any attempt is live or unresolved.
+  // Waiting for the records keeps the button from flashing up and then 409ing.
+  const hasBlockingRecord = publishRecords.some((r) => r.status !== 'failed');
+  const canPublish =
+    draft.status === 'review_ready' && !publishRecordsPending && !hasBlockingRecord;
+  // Requested, but the worker has not moved the draft to "publishing" yet
+  const isPublishQueued =
+    draft.status === 'review_ready' && latestRecord?.status === 'attempting';
+
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <main className="max-w-4xl mx-auto px-8 py-8">
@@ -330,7 +365,7 @@ export default function ArticleDraftDetailPage() {
               <p className="text-sm text-gray-400 mt-1">{draft.keyword}</p>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
-              {draft.status === 'review_ready' && (
+              {canPublish && (
                 <button
                   onClick={() => setPublishModalOpen(true)}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
@@ -349,11 +384,13 @@ export default function ArticleDraftDetailPage() {
             <span>Updated: {formatDate(draft.updatedAt)}</span>
           </div>
 
-          {isInProgress && (
+          {(isInProgress || isPublishQueued) && (
             <div className="flex items-center gap-2 mt-3 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
               <span className="w-3 h-3 rounded-full border-2 border-blue-500 border-t-transparent animate-spin flex-shrink-0" />
               <span className="text-xs text-blue-600">
-                Processing in progress — page will update automatically
+                {isPublishQueued
+                  ? 'Publish requested — waiting for the publisher to start. Page will update automatically'
+                  : 'Processing in progress — page will update automatically'}
               </span>
             </div>
           )}
@@ -406,7 +443,10 @@ export default function ArticleDraftDetailPage() {
         onClose={() => setPublishModalOpen(false)}
         onSuccess={() => {
           setPublishModalOpen(false);
+          // The new attempt record is what starts polling while the draft
+          // still reads review_ready, so both have to be refetched
           queryClient.invalidateQueries({ queryKey: ['article-draft', id] });
+          queryClient.invalidateQueries({ queryKey: ['article-draft-publish-records', id] });
         }}
       />
     </main>

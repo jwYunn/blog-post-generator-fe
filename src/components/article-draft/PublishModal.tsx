@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react';
 import { X } from 'lucide-react';
 import { useMutation } from '@tanstack/react-query';
+import axios from 'axios';
 import { articleDraftApi } from '../../api/articleDrafts';
 import type { PublishJobMode } from '../../types/articleDraft';
 import { useToast } from '../../hooks/useToast';
@@ -67,8 +68,16 @@ export default function PublishModal({
       // Short delay so the toast is briefly visible before calling onSuccess
       setTimeout(() => onSuccess(), 400);
     },
-    onError: () => {
-      addToast('Failed to publish. Please try again.', 'error');
+    onError: (error) => {
+      // A 409 explains why publishing is blocked (already published, or an
+      // earlier attempt still needs resolving) - show it rather than "try again"
+      const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined;
+      addToast(
+        Array.isArray(message)
+          ? message.join(', ')
+          : (message ?? 'Failed to publish. Please try again.'),
+        'error',
+      );
     },
   });
 

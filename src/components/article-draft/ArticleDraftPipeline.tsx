@@ -29,6 +29,7 @@ const STATUS_TO_STEP_INDEX: Partial<Record<ArticleDraftStatus, number>> = {
   content_generated:     1,
   generating_thumbnail:  2,
   review_ready:          3,
+  publishing:            3,
   failed:               -2,
 };
 
@@ -56,7 +57,8 @@ function buildSteps(status: ArticleDraftStatus): PipelineStep[] {
       state = 'pending';
     }
 
-    if (status === 'review_ready') state = 'done';
+    // Every generation step is behind a draft that is ready or being published
+    if (status === 'review_ready' || status === 'publishing') state = 'done';
 
     return { key, label, state };
   });
