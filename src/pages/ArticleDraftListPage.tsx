@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { RefreshCw, Copy, Check } from 'lucide-react';
+import { RefreshCw, Copy, Check, Send } from 'lucide-react';
 import { articleDraftApi } from '../api/articleDrafts';
 import type { ArticleDraft, ArticleDraftListParams, ArticleDraftStatus } from '../types/articleDraft';
 import { IN_PROGRESS_STATUSES } from '../types/articleDraft';
@@ -107,6 +107,99 @@ function SkeletonRow({ index }: { index: number }) {
   );
 }
 
+function SkeletonCard({ index }: { index: number }) {
+  const widths = SKELETON_WIDTHS[index % SKELETON_WIDTHS.length];
+  return (
+    <li className="px-4 py-4 animate-pulse">
+      <div className="h-4 bg-gray-200 rounded" style={{ width: widths[0] }} />
+      <div className="h-3 bg-gray-100 rounded mt-2" style={{ width: widths[1] }} />
+      <div className="h-5 w-24 bg-gray-100 rounded-full mt-3" />
+    </li>
+  );
+}
+
+// ─── Error / Empty states (shared by table and card list) ─────────────────────
+
+function DraftsErrorState({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center">
+        <RefreshCw className="w-5 h-5 text-red-400" />
+      </div>
+      <p className="text-gray-500 text-sm">Failed to load drafts</p>
+      <button
+        onClick={onRetry}
+        className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded-lg transition-colors"
+      >
+        Retry
+      </button>
+    </div>
+  );
+}
+
+function DraftsEmptyState() {
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <span className="text-4xl">📄</span>
+      <p className="text-gray-500 text-sm mt-1">No article drafts found</p>
+      <p className="text-gray-400 text-xs">
+        Approve topic candidates to trigger draft generation
+      </p>
+    </div>
+  );
+}
+
+// ─── Mobile card (replaces a table row below the md breakpoint) ───────────────
+
+function DraftCard({
+  draft,
+  isPublishQueued,
+  onOpen,
+  onPublish,
+}: {
+  draft: ArticleDraft;
+  isPublishQueued: boolean;
+  onOpen: () => void;
+  onPublish: () => void;
+}) {
+  return (
+    <li onClick={onOpen} className="px-4 py-4 cursor-pointer active:bg-blue-50/40 transition-colors">
+      <p className="font-medium text-gray-900 leading-snug break-words">{draft.title}</p>
+      <p className="text-xs text-gray-400 mt-0.5">{draft.keyword}</p>
+      {(draft.status === 'content_generated' || draft.status === 'review_ready') && (
+        <InlineHashtags hashtags={draft.hashtags} />
+      )}
+
+      <div className="flex items-center justify-between gap-3 mt-3">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
+          <ArticleDraftStatusBadge status={draft.status} />
+          <span className="text-xs text-gray-400 tabular-nums">
+            Updated {formatRelativeTime(draft.updatedAt)}
+          </span>
+        </div>
+
+        {isPublishQueued ? (
+          <span className="flex-shrink-0 inline-flex items-center gap-1.5 text-xs text-blue-600">
+            <span className="w-3 h-3 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
+            Queued
+          </span>
+        ) : draft.status === 'review_ready' && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onPublish();
+            }}
+            className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 active:bg-green-800 transition-colors"
+          >
+            <Send className="w-4 h-4" />
+            Publish
+          </button>
+        )}
+      </div>
+    </li>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function ArticleDraftListPage() {
@@ -157,7 +250,7 @@ export default function ArticleDraftListPage() {
   const drafts = data?.data ?? [];
 
   return (
-    <main className="max-w-[1440px] mx-auto px-8 py-8">
+    <main className="max-w-[1440px] mx-auto px-4 sm:px-8 py-8">
       {/* Page header */}
       <div className="flex items-start justify-between mb-6">
         <div>
@@ -179,16 +272,16 @@ export default function ArticleDraftListPage() {
         </button>
       </div>
 
-      {/* Status filter */}
-      <div className="bg-white rounded-xl border border-gray-200 px-4 py-3 mb-4 flex items-center gap-1.5 flex-wrap">
-        <span className="text-xs text-gray-400 font-medium mr-1">Status</span>
+      {/* Status filter — a single swipeable row on mobile, wraps on larger screens */}
+      <div className="bg-white rounded-xl border border-gray-200 px-4 py-3 mb-4 flex items-center gap-1.5 overflow-x-auto md:flex-wrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <span className="text-xs text-gray-400 font-medium mr-1 flex-shrink-0">Status</span>
         {STATUS_FILTER_OPTIONS.map((opt) => {
           const isSelected = params.status === opt.value;
           return (
             <button
               key={opt.label}
               onClick={() => handleStatusFilter(opt.value)}
-              className={`px-3 py-1.5 text-xs rounded-lg transition-all font-medium ${
+              className={`px-3 py-1.5 text-xs rounded-lg transition-all font-medium whitespace-nowrap flex-shrink-0 ${
                 isSelected
                   ? 'bg-blue-600 text-white shadow-sm'
                   : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
@@ -200,7 +293,7 @@ export default function ArticleDraftListPage() {
         })}
       </div>
 
-      {/* Table */}
+      {/* Table (md and up) / card list (mobile) */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         {/* Top fetching indicator */}
         <div
@@ -209,7 +302,35 @@ export default function ArticleDraftListPage() {
           }`}
         />
 
-        <div className="overflow-x-auto">
+        {/* Mobile card list */}
+        <ul className="md:hidden divide-y divide-gray-50">
+          {isLoading ? (
+            Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} index={i} />)
+          ) : isError ? (
+            <li className="px-4 py-20 text-center">
+              <DraftsErrorState onRetry={() => refetch()} />
+            </li>
+          ) : drafts.length === 0 ? (
+            <li className="px-4 py-20 text-center">
+              <DraftsEmptyState />
+            </li>
+          ) : (
+            drafts.map((draft) => (
+              <DraftCard
+                key={draft.id}
+                draft={draft}
+                isPublishQueued={isPublishQueued(draft)}
+                onOpen={() => handleRowClick(draft.id)}
+                onPublish={() =>
+                  setPublishModal({ open: true, draftId: draft.id, draftTitle: draft.title })
+                }
+              />
+            ))
+          )}
+        </ul>
+
+        {/* Desktop table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/80">
@@ -237,30 +358,13 @@ export default function ArticleDraftListPage() {
               ) : isError ? (
                 <tr>
                   <td colSpan={5} className="px-4 py-20 text-center">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center">
-                        <RefreshCw className="w-5 h-5 text-red-400" />
-                      </div>
-                      <p className="text-gray-500 text-sm">Failed to load drafts</p>
-                      <button
-                        onClick={() => refetch()}
-                        className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded-lg transition-colors"
-                      >
-                        Retry
-                      </button>
-                    </div>
+                    <DraftsErrorState onRetry={() => refetch()} />
                   </td>
                 </tr>
               ) : drafts.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-4 py-20 text-center">
-                    <div className="flex flex-col items-center gap-2">
-                      <span className="text-4xl">📄</span>
-                      <p className="text-gray-500 text-sm mt-1">No article drafts found</p>
-                      <p className="text-gray-400 text-xs">
-                        Approve topic candidates to trigger draft generation
-                      </p>
-                    </div>
+                    <DraftsEmptyState />
                   </td>
                 </tr>
               ) : (

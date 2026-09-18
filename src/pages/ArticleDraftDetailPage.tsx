@@ -133,8 +133,8 @@ function TitleWithCopy({ title }: { title: string }) {
   };
 
   return (
-    <div className="flex items-center gap-2">
-      <h1 className="text-lg font-bold text-gray-900 leading-snug">{title}</h1>
+    <div className="flex items-start gap-2">
+      <h1 className="min-w-0 break-words text-lg font-bold text-gray-900 leading-snug">{title}</h1>
       <button
         onClick={handleCopy}
         title="Copy title"
@@ -345,7 +345,7 @@ export default function ArticleDraftDetailPage() {
   // ─── Error state ─────────────────────────────────────────────────────────
   if (isError) {
     return (
-      <main className="max-w-4xl mx-auto px-8 py-8">
+      <main className="max-w-4xl mx-auto px-4 sm:px-8 py-8">
         <BackButton onClick={() => navigate('/article-drafts')} />
         <div className="flex flex-col items-center gap-4 py-20">
           <div className="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center">
@@ -366,7 +366,7 @@ export default function ArticleDraftDetailPage() {
   // ─── Loading state ────────────────────────────────────────────────────────
   if (isLoading || !draft) {
     return (
-      <main className="max-w-4xl mx-auto px-8 py-8">
+      <main className="max-w-4xl mx-auto px-4 sm:px-8 py-8">
         <BackButton onClick={() => navigate('/article-drafts')} />
         <DetailSkeleton />
       </main>
@@ -396,22 +396,23 @@ export default function ArticleDraftDetailPage() {
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
-    <main className="max-w-4xl mx-auto px-8 py-8">
+    <main className={`max-w-4xl mx-auto px-4 sm:px-8 py-8 ${canPublish ? 'pb-28 sm:pb-8' : ''}`}>
       <BackButton onClick={() => navigate('/article-drafts')} />
 
       <div className="space-y-4">
         {/* ── Header card ─────────────────────────────────────────────────── */}
         <div className="bg-white rounded-xl border border-gray-200 px-6 py-5">
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
             <div className="flex-1 min-w-0">
               <TitleWithCopy title={draft.title} />
               <p className="text-sm text-gray-400 mt-1">{draft.keyword}</p>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
+              {/* On mobile the Publish action lives in the sticky bottom bar instead */}
               {canPublish && (
                 <button
                   onClick={() => setPublishModalOpen(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                 >
                   <Send className="w-3.5 h-3.5" />
                   {isPublishRetry ? 'Retry Publish' : 'Publish'}
@@ -421,9 +422,9 @@ export default function ArticleDraftDetailPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-4 mt-4 pt-4 border-t border-gray-50 text-xs text-gray-400">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-4 pt-4 border-t border-gray-50 text-xs text-gray-400">
             <span>Created: {formatDate(draft.createdAt)}</span>
-            <span>·</span>
+            <span className="hidden sm:inline">·</span>
             <span>Updated: {formatDate(draft.updatedAt)}</span>
           </div>
 
@@ -504,6 +505,19 @@ export default function ArticleDraftDetailPage() {
           onResolve={setResolveTarget}
         />
       </div>
+
+      {/* ── Mobile sticky Publish bar ───────────────────────────────────── */}
+      {canPublish && (
+        <div className="sm:hidden fixed inset-x-0 bottom-0 z-40 bg-white/95 backdrop-blur border-t border-gray-200 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+          <button
+            onClick={() => setPublishModalOpen(true)}
+            className="w-full flex items-center justify-center gap-2 py-3 text-sm font-semibold bg-green-600 text-white rounded-xl hover:bg-green-700 active:bg-green-800 transition-colors"
+          >
+            <Send className="w-4 h-4" />
+            {isPublishRetry ? 'Retry Publish' : 'Publish'}
+          </button>
+        </div>
+      )}
 
       <ResolveAttemptDialog
         record={resolveTarget}

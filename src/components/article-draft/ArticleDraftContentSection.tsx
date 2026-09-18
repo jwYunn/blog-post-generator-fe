@@ -199,7 +199,8 @@ export default function ArticleDraftContentSection({
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-3.5 border-b border-gray-100 bg-gray-50/60">
+      {/* Wraps onto two lines on narrow screens so the Copy button is never clipped */}
+      <div className="flex flex-wrap items-center justify-between gap-2 px-6 py-3.5 border-b border-gray-100 bg-gray-50/60">
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-semibold text-gray-800">{label}</h2>
           {viewMode !== 'preview' && (
@@ -207,7 +208,7 @@ export default function ArticleDraftContentSection({
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2 ml-auto">
           {/* 토글 */}
           <div className="flex items-center border border-gray-200 rounded-lg p-0.5 bg-gray-100 gap-0.5">
             {tabs.map((tab) => (
@@ -229,7 +230,7 @@ export default function ArticleDraftContentSection({
           {showCopy && (
             <button
               onClick={handleCopy}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-500 whitespace-nowrap hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
               title={`Copy ${viewMode === 'markdown' ? 'markdown' : 'HTML'}`}
             >
               {copied ? (

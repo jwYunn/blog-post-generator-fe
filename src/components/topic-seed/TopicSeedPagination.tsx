@@ -30,7 +30,7 @@ export default function TopicSeedPagination({ total, page, limit, onChange }: Pr
   const to = Math.min(page * limit, total);
 
   return (
-    <div className="flex items-center justify-between mt-4 px-1">
+    <div className="flex flex-wrap items-center justify-between gap-3 mt-4 px-1">
       {/* 좌측: 결과 정보 + 페이지당 개수 */}
       <div className="flex items-center gap-3 text-sm text-gray-500">
         <span>

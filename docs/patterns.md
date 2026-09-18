@@ -302,6 +302,39 @@ const handleCopy = async (text: string) => {
 
 ---
 
+## Responsive (Mobile) Pattern
+
+The app is used from phones (e.g. publishing on the go), so every screen must fit a 375px viewport without horizontal page scroll. Write mobile-first: unprefixed classes target phones, `sm:` / `md:` add the desktop layout.
+
+### Tables → card lists
+Tables are desktop-only. Each list renders both views and lets the breakpoint pick one:
+
+```tsx
+{/* Mobile card list */}
+<ul className="md:hidden divide-y divide-gray-50">
+  {isLoading ? <SkeletonCard … /> : isError ? <ErrorState … /> : items.map((item) => <ItemCard … />)}
+</ul>
+
+{/* Desktop table */}
+<div className="hidden md:block overflow-x-auto">
+  <table>…</table>
+</div>
+```
+
+- Badges, action buttons and empty/error states are small components shared by the table row and the card, so both stay in sync
+- Sortable table headers are hidden on mobile — add a `md:hidden` "Sort" chip bar that calls the same `onSort`
+- Row actions that only appear on hover must use `[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100` so touch devices always see them
+
+### Layout rules
+- Page wrappers use `px-4 sm:px-8` side padding
+- Header rows with a title + button(s): add `gap-4` and `whitespace-nowrap flex-shrink-0` on the button, or `flex-wrap` when there are several buttons
+- Any horizontal row that can outgrow 375px (filter chips, pagination, card headers) needs `flex-wrap` or `overflow-x-auto` — one overflowing element widens the whole page and pushes centered modals off-screen
+- The top nav scrolls horizontally on narrow screens instead of wrapping
+- Primary actions on a detail page get a `sm:hidden` sticky bottom bar (see the Publish bar in `ArticleDraftDetailPage`)
+- Inputs are forced to 16px on touch devices in `src/index.css` to stop iOS Safari's focus zoom — no per-input handling needed
+
+---
+
 ## Status Color Maps
 
 Use these constants — don't hardcode Tailwind colors inline for status/verdict/category.

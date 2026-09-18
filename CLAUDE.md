@@ -37,3 +37,4 @@ Read these files before suggesting features or changes:
 - Forms always use React Hook Form + Zod schema — no uncontrolled inputs
 - Status badges reference `STATUS_CONFIG` / `CATEGORY_STYLES` maps — don't hardcode colors inline
 - `IN_PROGRESS_STATUSES` constant in `src/types/articleDraft.ts` drives all polling logic for drafts
+- Every screen must work at 375px wide: lists render a card list below `md` and the table from `md` up (see the Responsive Pattern in `docs/patterns.md`)

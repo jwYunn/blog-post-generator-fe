@@ -43,6 +43,11 @@ function stripProtocol(url: string): string {
   return url.replace(/^https?:\/\//, '');
 }
 
+/** Stuck: the worker is done with it, so only a person can settle it */
+function isStuckAttempt(record: PublishRecord): boolean {
+  return record.status === 'attempting' && !!record.draft && !isAttemptInFlight(record, record.draft);
+}
+
 // ─── SkeletonRow ─────────────────────────────────────────────────────────────
 
 function SkeletonRow() {
@@ -58,6 +63,16 @@ function SkeletonRow() {
         </td>
       ))}
     </tr>
+  );
+}
+
+function SkeletonCard() {
+  return (
+    <li className="px-4 py-4 animate-pulse">
+      <div className="h-4 w-3/4 bg-gray-100 rounded" />
+      <div className="h-3 w-1/2 bg-gray-100 rounded mt-2" />
+      <div className="h-5 w-20 bg-gray-100 rounded-full mt-3" />
+    </li>
   );
 }
 
@@ -85,6 +100,80 @@ function ScheduleCell({ record }: { record: PublishRecord }) {
         {formatDate(record.schedule.scheduledAt)}
       </p>
     </div>
+  );
+}
+
+// ─── RecordCard (replaces a table row below the md breakpoint) ────────────────
+
+function RecordCard({
+  record,
+  onEdit,
+  onDelete,
+  onResolve,
+}: {
+  record: PublishRecord;
+  onEdit: () => void;
+  onDelete: () => void;
+  onResolve: () => void;
+}) {
+  return (
+    <li className="px-4 py-4">
+      <div className="flex items-start justify-between gap-3">
+        <Link
+          to={`/article-drafts/${record.draftId}`}
+          className="min-w-0 text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline leading-snug line-clamp-2 break-words"
+        >
+          {record.draft?.title ?? record.draftId.slice(0, 8)}
+        </Link>
+
+        <div className="flex items-center gap-1 flex-shrink-0 -mr-2 -mt-1">
+          <button
+            onClick={onEdit}
+            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            title="Edit"
+          >
+            <Pencil className="w-4 h-4" />
+          </button>
+          <button
+            onClick={onDelete}
+            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            title="Delete"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {record.permalink && (
+        <a
+          href={record.permalink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block mt-1.5 text-xs text-blue-600 hover:text-blue-800 hover:underline break-all"
+        >
+          {stripProtocol(record.permalink)}
+        </a>
+      )}
+
+      <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-1.5 mt-3">
+        <div className="flex items-start gap-1.5">
+          <PublishRecordStatusBadge status={record.status} />
+          <ScheduleCell record={record} />
+        </div>
+        <span className="ml-auto text-xs text-gray-400 tabular-nums whitespace-nowrap">
+          {formatDate(record.createdAt)}
+        </span>
+      </div>
+
+      {isStuckAttempt(record) && (
+        <button
+          onClick={onResolve}
+          className="w-full mt-3 py-2 text-sm font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors"
+        >
+          Resolve
+        </button>
+      )}
+    </li>
   );
 }
 
@@ -184,7 +273,7 @@ export default function PublishHistoryPage() {
 
   return (
     <>
-      <div className="p-8">
+      <div className="px-4 sm:px-8 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -205,7 +294,7 @@ export default function PublishHistoryPage() {
         </div>
 
         {/* Status filter */}
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex flex-wrap items-center gap-2 mb-4">
           {STATUS_FILTER_OPTIONS.map((opt) => (
             <button
               key={opt.label}
@@ -239,7 +328,23 @@ export default function PublishHistoryPage() {
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto">
+              {/* Mobile card list */}
+              <ul className="md:hidden divide-y divide-gray-50">
+                {isLoading
+                  ? Array.from({ length: 5 }).map((_, i) => <SkeletonCard key={i} />)
+                  : records.map((record) => (
+                      <RecordCard
+                        key={record.id}
+                        record={record}
+                        onEdit={() => setFormModal({ open: true, record })}
+                        onResolve={() => setResolveTarget(record)}
+                        onDelete={() => setDeleteTarget(record)}
+                      />
+                    ))}
+              </ul>
+
+              {/* Desktop table */}
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-100 bg-gray-50/80">
@@ -319,8 +424,7 @@ export default function PublishHistoryPage() {
                             {/* Actions */}
                             <td className="px-4 py-4">
                               <div className="flex items-center gap-1">
-                                {/* Stuck: the worker is done with it, so only a person can settle it */}
-                                {record.status === 'attempting' && record.draft && !isAttemptInFlight(record, record.draft) && (
+                                {isStuckAttempt(record) && (
                                   <button
                                     onClick={() => setResolveTarget(record)}
                                     className="mr-1 px-2 py-1 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-md hover:bg-amber-100 transition-colors"

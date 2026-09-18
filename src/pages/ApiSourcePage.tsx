@@ -39,6 +39,88 @@ function SkeletonRow() {
   );
 }
 
+function SkeletonCard() {
+  return (
+    <li className="px-4 py-4 animate-pulse">
+      <div className="h-4 w-1/3 bg-gray-100 rounded" />
+      <div className="h-3 w-3/4 bg-gray-100 rounded mt-2" />
+    </li>
+  );
+}
+
+// ─── Error / Empty states (shared by table and card list) ─────────────────────
+
+function ErrorState({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <p className="text-gray-500 text-sm">Failed to load data</p>
+      <button
+        onClick={onRetry}
+        className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded-lg transition-colors"
+      >
+        Retry
+      </button>
+    </div>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <Database className="w-8 h-8 text-gray-200" />
+      <p className="text-gray-500 text-sm mt-1">No API sources yet</p>
+      <p className="text-gray-400 text-xs">Click "Add Source" to get started</p>
+    </div>
+  );
+}
+
+// ─── SourceCard (replaces a table row below the md breakpoint) ────────────────
+
+function SourceCard({
+  source,
+  onEdit,
+  onDelete,
+}: {
+  source: ApiSource;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <li className="px-4 py-4">
+      <div className="flex items-start justify-between gap-3">
+        <p className="min-w-0 font-medium text-gray-900 leading-snug break-words">{source.name}</p>
+        <div className="flex items-center gap-1 flex-shrink-0 -mr-2 -mt-1">
+          <button
+            onClick={onEdit}
+            title="Edit"
+            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+          >
+            <Pencil className="w-4 h-4" />
+          </button>
+          <button
+            onClick={onDelete}
+            title="Delete"
+            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      <a
+        href={source.url}
+        target="_blank"
+        rel="noreferrer"
+        className="block mt-1 text-xs text-blue-600 hover:text-blue-700 hover:underline break-all"
+      >
+        {stripProtocol(source.url)}
+        <ExternalLink className="w-3 h-3 inline-block ml-1 -mt-0.5" />
+      </a>
+      <p className="text-xs text-gray-400 mt-2">{formatDate(source.createdAt)}</p>
+    </li>
+  );
+}
+
 // ─── Delete Confirm Dialog ────────────────────────────────────────────────────
 
 function DeleteConfirmDialog({
@@ -223,7 +305,7 @@ export default function ApiSourcePage() {
 
   return (
     <>
-      <main className="max-w-5xl mx-auto px-8 py-8">
+      <main className="max-w-5xl mx-auto px-4 sm:px-8 py-8">
         {/* Header */}
         <div className="flex items-start justify-between mb-6">
           <div>
@@ -241,9 +323,34 @@ export default function ApiSourcePage() {
           </button>
         </div>
 
-        {/* Table */}
+        {/* Table (md and up) / card list (mobile) */}
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
+          {/* Mobile card list */}
+          <ul className="md:hidden divide-y divide-gray-50">
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, i) => <SkeletonCard key={i} />)
+            ) : isError ? (
+              <li className="px-4 py-20 text-center">
+                <ErrorState onRetry={() => refetch()} />
+              </li>
+            ) : (data?.length ?? 0) === 0 ? (
+              <li className="px-4 py-20 text-center">
+                <EmptyState />
+              </li>
+            ) : (
+              data!.map((source) => (
+                <SourceCard
+                  key={source.id}
+                  source={source}
+                  onEdit={() => setFormTarget(source)}
+                  onDelete={() => setDeleteTarget(source)}
+                />
+              ))
+            )}
+          </ul>
+
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/80">
@@ -263,25 +370,13 @@ export default function ApiSourcePage() {
                 ) : isError ? (
                   <tr>
                     <td colSpan={4} className="px-4 py-20 text-center">
-                      <div className="flex flex-col items-center gap-3">
-                        <p className="text-gray-500 text-sm">Failed to load data</p>
-                        <button
-                          onClick={() => refetch()}
-                          className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded-lg transition-colors"
-                        >
-                          Retry
-                        </button>
-                      </div>
+                      <ErrorState onRetry={() => refetch()} />
                     </td>
                   </tr>
                 ) : (data?.length ?? 0) === 0 ? (
                   <tr>
                     <td colSpan={4} className="px-4 py-20 text-center">
-                      <div className="flex flex-col items-center gap-2">
-                        <Database className="w-8 h-8 text-gray-200" />
-                        <p className="text-gray-500 text-sm mt-1">No API sources yet</p>
-                        <p className="text-gray-400 text-xs">Click "Add Source" to get started</p>
-                      </div>
+                      <EmptyState />
                     </td>
                   </tr>
                 ) : (
@@ -313,7 +408,7 @@ export default function ApiSourcePage() {
 
                       {/* Actions */}
                       <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
+                        <div className="flex items-center gap-1 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity justify-end">
                           <button
                             onClick={() => setFormTarget(source)}
                             title="Edit"

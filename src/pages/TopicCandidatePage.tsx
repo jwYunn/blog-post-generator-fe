@@ -238,9 +238,9 @@ export default function TopicCandidatePage() {
   // ─── 렌더 ────────────────────────────────────────────────────────────────────
   return (
     <>
-      <main className="max-w-[1440px] mx-auto px-8 py-8">
+      <main className="max-w-[1440px] mx-auto px-4 sm:px-8 py-8">
         {/* 페이지 타이틀 */}
-        <div className="flex items-start justify-between mb-6">
+        <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
           <div>
             <h1 className="text-xl font-bold text-gray-900">Topic Candidates</h1>
             <p className="text-sm text-gray-400 mt-0.5">
@@ -330,19 +330,19 @@ export default function TopicCandidatePage() {
         {params.topicSeedId && (
           <div className="flex items-center gap-3 bg-blue-50 border border-blue-100 rounded-xl px-4 py-2.5 mb-4">
             <span className="text-sm text-blue-400 font-medium shrink-0">Seed</span>
-            <div className="flex items-center gap-2 flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 flex-1 min-w-0">
               <span className="font-semibold text-blue-900 truncate">
                 {selectedSeed?.seed ?? params.topicSeedId}
               </span>
               {selectedSeed && (
                 <>
-                  <span className="text-blue-200">·</span>
+                  <span className="hidden sm:inline text-blue-200">·</span>
                   <span
                     className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${CATEGORY_STYLES[selectedSeed.category]}`}
                   >
                     {CATEGORY_LABELS[selectedSeed.category]}
                   </span>
-                  <span className="text-blue-200">·</span>
+                  <span className="hidden sm:inline text-blue-200">·</span>
                   <span
                     className={`inline-flex items-center gap-1 text-xs font-medium ${
                       selectedSeed.isActive ? 'text-green-600' : 'text-gray-400'

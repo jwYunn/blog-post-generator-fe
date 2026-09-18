@@ -108,21 +108,53 @@ function ImageCard({
   );
 }
 
-// ─── History Row ──────────────────────────────────────────────────────────────
+// ─── History Row / Card ───────────────────────────────────────────────────────
 
-function HistoryRow({
-  prompt,
-  isActive,
-  onView,
-  onDelete,
-  isDeleting,
-}: {
+interface HistoryItemProps {
   prompt: { id: string; name: string | null; prompt: string; model: string; status: string; createdAt: string };
   isActive: boolean;
   onView: (id: string) => void;
   onDelete: (id: string) => void;
   isDeleting: boolean;
-}) {
+}
+
+function PromptStatusBadge({ status }: { status: string }) {
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[status as keyof typeof STATUS_STYLES] ?? 'bg-gray-100 text-gray-500'}`}>
+      <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70" />
+      {status}
+    </span>
+  );
+}
+
+function HistoryActions({
+  prompt,
+  onView,
+  onDelete,
+  isDeleting,
+  buttonClassName,
+}: Omit<HistoryItemProps, 'isActive'> & { buttonClassName: string }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <button
+        onClick={() => onView(prompt.id)}
+        className={`flex items-center gap-1 rounded-md text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors ${buttonClassName}`}
+      >
+        <Eye className="w-3 h-3" />
+        View
+      </button>
+      <button
+        onClick={() => onDelete(prompt.id)}
+        disabled={isDeleting}
+        className={`flex items-center gap-1 rounded-md text-xs font-medium text-red-500 bg-red-50 hover:bg-red-100 transition-colors disabled:opacity-50 ${buttonClassName}`}
+      >
+        {isDeleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+      </button>
+    </div>
+  );
+}
+
+function HistoryRow({ prompt, isActive, onView, onDelete, isDeleting }: HistoryItemProps) {
   const modelLabel = prompt.model.split('/')[1] ?? prompt.model;
 
   return (
@@ -136,32 +168,52 @@ function HistoryRow({
         </p>
       </td>
       <td className="px-4 py-3 whitespace-nowrap">
-        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[prompt.status as keyof typeof STATUS_STYLES] ?? 'bg-gray-100 text-gray-500'}`}>
-          <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70" />
-          {prompt.status}
-        </span>
+        <PromptStatusBadge status={prompt.status} />
       </td>
       <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">{modelLabel}</td>
       <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">{formatDate(prompt.createdAt)}</td>
       <td className="px-4 py-3">
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={() => onView(prompt.id)}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors"
-          >
-            <Eye className="w-3 h-3" />
-            View
-          </button>
-          <button
-            onClick={() => onDelete(prompt.id)}
-            disabled={isDeleting}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium text-red-500 bg-red-50 hover:bg-red-100 transition-colors disabled:opacity-50"
-          >
-            {isDeleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
-          </button>
-        </div>
+        <HistoryActions
+          prompt={prompt}
+          onView={onView}
+          onDelete={onDelete}
+          isDeleting={isDeleting}
+          buttonClassName="px-2.5 py-1"
+        />
       </td>
     </tr>
+  );
+}
+
+// Replaces a table row below the md breakpoint
+function HistoryCard({ prompt, isActive, onView, onDelete, isDeleting }: HistoryItemProps) {
+  const modelLabel = prompt.model.split('/')[1] ?? prompt.model;
+
+  return (
+    <li className={`px-4 py-3.5 ${isActive ? 'bg-blue-50/40' : ''}`}>
+      {prompt.name && (
+        <p className="text-sm font-semibold text-gray-700 break-words">{prompt.name}</p>
+      )}
+      <p className="text-xs text-gray-500 mt-0.5 line-clamp-2 break-words">{prompt.prompt}</p>
+
+      <div className="flex items-center justify-between gap-3 mt-2.5">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
+          <PromptStatusBadge status={prompt.status} />
+          <span className="text-xs text-gray-400 whitespace-nowrap">
+            {modelLabel} · {formatDate(prompt.createdAt)}
+          </span>
+        </div>
+        <div className="flex-shrink-0">
+          <HistoryActions
+            prompt={prompt}
+            onView={onView}
+            onDelete={onDelete}
+            isDeleting={isDeleting}
+            buttonClassName="px-3 py-2"
+          />
+        </div>
+      </div>
+    </li>
   );
 }
 
@@ -297,7 +349,7 @@ export default function ThumbnailGeneratorPage() {
   // ─── 렌더 ────────────────────────────────────────────────────────────────────
   return (
     <>
-      <main className="max-w-[1200px] mx-auto px-8 py-8 space-y-8">
+      <main className="max-w-[1200px] mx-auto px-4 sm:px-8 py-8 space-y-8">
 
         {/* 페이지 헤더 */}
         <div className="flex items-start justify-between">
@@ -489,7 +541,38 @@ export default function ThumbnailGeneratorPage() {
         <section>
           <h2 className="text-sm font-bold text-gray-700 mb-3">History</h2>
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <div className="overflow-x-auto">
+            {/* Mobile card list */}
+            <ul className="md:hidden divide-y divide-gray-50">
+              {isHistoryLoading ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <li key={i} className="px-4 py-3.5 animate-pulse">
+                    <div className="h-4 w-2/3 bg-gray-100 rounded" />
+                    <div className="h-5 w-32 bg-gray-100 rounded-full mt-2.5" />
+                  </li>
+                ))
+              ) : (historyData?.data ?? []).length === 0 ? (
+                <li className="px-4 py-16 text-center">
+                  <div className="flex flex-col items-center gap-2">
+                    <ImageIcon className="w-10 h-10 text-gray-200" />
+                    <p className="text-sm text-gray-400">No thumbnails generated yet</p>
+                  </div>
+                </li>
+              ) : (
+                (historyData?.data ?? []).map((prompt) => (
+                  <HistoryCard
+                    key={prompt.id}
+                    prompt={prompt}
+                    isActive={prompt.id === activePromptId}
+                    onView={loadImages}
+                    onDelete={(id) => deleteMutation.mutate(id)}
+                    isDeleting={deletingId === prompt.id}
+                  />
+                ))
+              )}
+            </ul>
+
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50/80">

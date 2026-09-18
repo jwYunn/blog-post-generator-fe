@@ -67,9 +67,9 @@ export default function TopicSeedPage() {
   // ─── 렌더 ────────────────────────────────────────────────────────────────────
   return (
     <>
-      <main className="max-w-[1440px] mx-auto px-8 py-8">
+      <main className="max-w-[1440px] mx-auto px-4 sm:px-8 py-8">
         {/* 페이지 타이틀 */}
-        <div className="flex items-start justify-between mb-6">
+        <div className="flex items-start justify-between gap-4 mb-6">
           <div>
             <h1 className="text-xl font-bold text-gray-900">Topic Seeds</h1>
             <p className="text-sm text-gray-400 mt-0.5">
@@ -78,7 +78,7 @@ export default function TopicSeedPage() {
           </div>
           <button
             onClick={() => setFormModal({ open: true })}
-            className="flex items-center gap-2 bg-blue-600 text-white text-sm font-medium px-4 py-2.5 rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors shadow-sm"
+            className="flex items-center gap-2 flex-shrink-0 whitespace-nowrap bg-blue-600 text-white text-sm font-medium px-4 py-2.5 rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors shadow-sm"
           >
             <Plus className="w-4 h-4" />
             New Seed
