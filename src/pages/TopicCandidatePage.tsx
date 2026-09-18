@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { X, Sparkles, Loader2, FlaskConical } from 'lucide-react';
 import axios from 'axios';
 import { topicCandidateApi } from '../api/topicCandidate';
 import { topicSeedApi } from '../api/topicSeed';
-import type { TopicCandidateListParams } from '../types/topicCandidate';
+import type { ApproveCandidateResponse, TopicCandidateListParams } from '../types/topicCandidate';
 import type { TopicSeedCategory } from '../types/topicSeed';
 import TopicCandidateTable from '../components/topic-candidate/TopicCandidateTable';
 import TopicCandidateFilters from '../components/topic-candidate/TopicCandidateFilters';
@@ -41,6 +41,7 @@ const POLL_TIMEOUT_MS = 120_000; // 2분 후 자동 중단
 export default function TopicCandidatePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { toasts, addToast, removeToast } = useToast();
+  const navigate = useNavigate();
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [isEvaluating, setIsEvaluating] = useState(false);
@@ -217,6 +218,19 @@ export default function TopicCandidatePage() {
     }));
   };
 
+  const handleApproved = (result: ApproveCandidateResponse) => {
+    const openDraft = {
+      label: 'Open draft',
+      onClick: () => navigate(`/article-drafts/${result.articleDraftId}`),
+    };
+    if (result.pipelineQueued) {
+      addToast('Approved — article generation started', 'success', openDraft);
+    } else {
+      // Re-approving never restarts a draft that got past "failed"
+      addToast('Approved — this candidate already has a draft', 'success', openDraft);
+    }
+  };
+
   const handlePageChange = (page: number, limit: number) => {
     setParams((prev) => ({ ...prev, page, limit }));
   };
@@ -370,6 +384,8 @@ export default function TopicCandidatePage() {
           params={params}
           onSort={handleSort}
           onRetry={refetch}
+          onApproved={handleApproved}
+          onApproveError={(message) => addToast(message, 'error')}
         />
 
         {/* 페이지네이션 */}

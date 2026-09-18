@@ -2,7 +2,12 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { RefreshCw, Info, X, Tag, Target, Calendar, BookOpen, CheckCircle, Loader2, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import axios from 'axios';
-import type { TopicCandidate, TopicCandidateListParams, TopicCandidateStatus } from '../../types/topicCandidate';
+import type {
+  ApproveCandidateResponse,
+  TopicCandidate,
+  TopicCandidateListParams,
+  TopicCandidateStatus,
+} from '../../types/topicCandidate';
 import { topicCandidateApi } from '../../api/topicCandidate';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -179,6 +184,9 @@ interface Props {
   params: TopicCandidateListParams;
   onSort: (sortBy: SortableColumn) => void;
   onRetry: () => void;
+  /** Approval creates (or finds) the draft - the page decides where to point the user */
+  onApproved: (result: ApproveCandidateResponse) => void;
+  onApproveError: (message: string) => void;
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -191,6 +199,8 @@ export default function TopicCandidateTable({
   params,
   onSort,
   onRetry,
+  onApproved,
+  onApproveError,
 }: Props) {
   const queryClient = useQueryClient();
   const [detailCandidate, setDetailCandidate] = useState<TopicCandidate | null>(null);
@@ -203,14 +213,15 @@ export default function TopicCandidateTable({
       topicCandidateApi.updateStatus(id, { status: 'approved' }),
     onMutate: (id) => setApprovingId(id),
     onSettled: () => setApprovingId(null),
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['topic-candidates'] });
+      if (result.status === 'approved') onApproved(result);
     },
     onError: (error) => {
       const message = axios.isAxiosError(error)
         ? (error.response?.data?.message ?? 'Failed to approve candidate.')
         : 'Failed to approve candidate.';
-      alert(message);
+      onApproveError(message);
     },
   });
 
