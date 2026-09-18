@@ -68,14 +68,28 @@ export interface CreatePublishJobDto {
   scheduledAt?: string;
 }
 
+export interface PublishJobResponse {
+  jobId: string;
+  /** Written as "attempting" before the job is queued */
+  publishRecordId: string;
+}
+
+/**
+ * Outcome of one publish attempt.
+ * - attempting: started, outcome unknown - a post may already be live.
+ *   Blocks republishing until someone checks the blog and resolves it.
+ * - published: the post went up. Also blocks republishing.
+ * - failed: stopped before anything was posted, so a retry is safe.
+ */
+export type PublishRecordStatus = 'attempting' | 'published' | 'failed';
+
 export interface PublishRecord {
   id: string;
   draftId: string;
-  draft?: {
-    id: string;
-    title: string;
-    status: ArticleDraftStatus;
-  };
+  /** Joined on list endpoints only */
+  draft?: ArticleDraft;
+  status: PublishRecordStatus;
+  blogName: string | null;
   permalink: string | null;
   schedule: { mode: 'now' } | { mode: 'schedule'; scheduledAt: string } | null;
   meta: Record<string, unknown> | null;
@@ -88,4 +102,24 @@ export interface ArticleDraftListParams {
   status?: ArticleDraftStatus;
   sortBy?: 'createdAt' | 'updatedAt';
   sortOrder?: 'ASC' | 'DESC';
+}
+
+// ─── Publish attempt state ────────────────────────────────────────────────────
+
+/**
+ * Whether an "attempting" record is one the worker will still resolve on its
+ * own, as opposed to one a person has to settle by checking the blog.
+ *
+ * The worker marks the draft failed after the attempt was written, so a failed
+ * draft updated later than its attempt means the run is over and the attempt
+ * is stuck. An attempt newer than the draft's last update is a retry the worker
+ * has not picked up yet - the draft only leaves "failed" once it does.
+ */
+export function isAttemptInFlight(
+  record: Pick<PublishRecord, 'status' | 'createdAt'> | undefined,
+  draft: Pick<ArticleDraft, 'status' | 'updatedAt'> | undefined,
+): boolean {
+  if (record?.status !== 'attempting' || !draft) return false;
+  if (draft.status !== 'failed') return true;
+  return Date.parse(record.createdAt) > Date.parse(draft.updatedAt);
 }

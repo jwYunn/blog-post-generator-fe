@@ -1,6 +1,7 @@
 export type TopicCandidateStatus = 'pending' | 'approved' | 'rejected';
 
 export interface EvaluationDetail {
+  search_demand: number;
   search_intent_clarity: number;
   topic_specificity: number;
   seo_title_quality: number;
@@ -20,7 +21,8 @@ export interface TopicCandidate {
   targetReader: string | null;
   whyThisTopic: string | null;
   outlinePreview: string[] | null;
-  overallScore: number | null;
+  // Postgres decimal column - arrives as a string such as "85.50"
+  overallScore: string | null;
   rank: number | null;
   strengths: string[] | null;
   weaknesses: string[] | null;
@@ -43,6 +45,25 @@ export interface UpdateTopicCandidateStatusRequest {
   status: UpdateCandidateStatus;
 }
 
+export interface ApproveCandidateResponse {
+  id: string;
+  status: 'approved';
+  /** The draft this candidate became - newly created or the one it already had */
+  articleDraftId: string;
+  articleDraftCreated: boolean;
+  /** False when an existing draft was left alone, so no generation is running */
+  pipelineQueued: boolean;
+}
+
+export interface RejectCandidateResponse {
+  id: string;
+  status: 'rejected';
+}
+
+export type UpdateTopicCandidateStatusResponse =
+  | ApproveCandidateResponse
+  | RejectCandidateResponse;
+
 export interface TopicCandidateListParams {
   page?: number;
   limit?: number;
@@ -51,7 +72,7 @@ export interface TopicCandidateListParams {
   keyword?: string;
   minScore?: number;
   maxScore?: number;
-  sortBy?: 'createdAt' | 'score' | 'overallScore' | 'rank';
+  sortBy?: 'createdAt' | 'score' | 'title' | 'overallScore' | 'rank';
   sortOrder?: 'ASC' | 'DESC';
 }
 
@@ -71,6 +92,6 @@ export interface CandidateListQuery {
   keyword?: string;
   minScore?: number;
   maxScore?: number;
-  sortBy?: 'createdAt' | 'score' | 'title';
+  sortBy?: 'createdAt' | 'score' | 'title' | 'overallScore' | 'rank';
   sortOrder?: 'ASC' | 'DESC';
 }

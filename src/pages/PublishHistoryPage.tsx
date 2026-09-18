@@ -4,14 +4,27 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Globe, Plus, Pencil, Trash2 } from 'lucide-react';
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react';
 import { publishRecordsApi } from '../api/publishRecords';
-import type { PublishRecord } from '../types/articleDraft';
+import { isAttemptInFlight } from '../types/articleDraft';
+import type { PublishRecord, PublishRecordStatus } from '../types/articleDraft';
 import { useToast } from '../hooks/useToast';
 import ToastContainer from '../components/Toast';
 import PublishRecordFormModal from '../components/article-draft/PublishRecordFormModal';
+import PublishRecordStatusBadge from '../components/article-draft/PublishRecordStatusBadge';
+import ResolveAttemptDialog from '../components/article-draft/ResolveAttemptDialog';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const LIMIT = 20;
+// The API cannot filter by status, so a filtered view searches this many of
+// the most recent records instead of paging
+const FILTER_WINDOW = 100;
+
+const STATUS_FILTER_OPTIONS: { label: string; value: PublishRecordStatus | undefined }[] = [
+  { label: 'All', value: undefined },
+  { label: 'Attempting', value: 'attempting' },
+  { label: 'Published', value: 'published' },
+  { label: 'Failed', value: 'failed' },
+];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -30,10 +43,15 @@ function stripProtocol(url: string): string {
   return url.replace(/^https?:\/\//, '');
 }
 
+/** Stuck: the worker is done with it, so only a person can settle it */
+function isStuckAttempt(record: PublishRecord): boolean {
+  return record.status === 'attempting' && !!record.draft && !isAttemptInFlight(record, record.draft);
+}
+
 // ─── SkeletonRow ─────────────────────────────────────────────────────────────
 
 function SkeletonRow() {
-  const widths = ['20%', '50%', '25%', '20%', '10%'];
+  const widths = ['20%', '12%', '50%', '25%', '20%', '10%'];
   return (
     <tr className="border-b border-gray-50">
       {widths.map((w, i) => (
@@ -91,10 +109,12 @@ function RecordCard({
   record,
   onEdit,
   onDelete,
+  onResolve,
 }: {
   record: PublishRecord;
   onEdit: () => void;
   onDelete: () => void;
+  onResolve: () => void;
 }) {
   return (
     <li className="px-4 py-4">
@@ -135,12 +155,24 @@ function RecordCard({
         </a>
       )}
 
-      <div className="flex items-end justify-between gap-3 mt-3">
-        <ScheduleCell record={record} />
-        <span className="text-xs text-gray-400 tabular-nums whitespace-nowrap">
+      <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-1.5 mt-3">
+        <div className="flex items-start gap-1.5">
+          <PublishRecordStatusBadge status={record.status} />
+          <ScheduleCell record={record} />
+        </div>
+        <span className="ml-auto text-xs text-gray-400 tabular-nums whitespace-nowrap">
           {formatDate(record.createdAt)}
         </span>
       </div>
+
+      {isStuckAttempt(record) && (
+        <button
+          onClick={onResolve}
+          className="w-full mt-3 py-2 text-sm font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors"
+        >
+          Resolve
+        </button>
+      )}
     </li>
   );
 }
@@ -205,10 +237,16 @@ export default function PublishHistoryPage() {
 
   // delete confirm state
   const [deleteTarget, setDeleteTarget] = useState<PublishRecord | null>(null);
+  const [resolveTarget, setResolveTarget] = useState<PublishRecord | null>(null);
+  const [statusFilter, setStatusFilter] = useState<PublishRecordStatus | undefined>(undefined);
+
+  const listParams = statusFilter
+    ? { page: 1, limit: FILTER_WINDOW }
+    : { page, limit: LIMIT };
 
   const { data, isLoading } = useQuery({
-    queryKey: ['publish-records', page],
-    queryFn: () => publishRecordsApi.getList({ page, limit: LIMIT }),
+    queryKey: ['publish-records', listParams],
+    queryFn: () => publishRecordsApi.getList(listParams),
     staleTime: 30_000,
   });
 
@@ -224,9 +262,9 @@ export default function PublishHistoryPage() {
     },
   });
 
-  const records = data?.data ?? [];
+  const records = (data?.data ?? []).filter((r) => !statusFilter || r.status === statusFilter);
   const total = data?.total ?? 0;
-  const totalPages = Math.max(1, Math.ceil(total / LIMIT));
+  const totalPages = statusFilter ? 1 : Math.max(1, Math.ceil(total / LIMIT));
 
   const handleFormSuccess = () => {
     setFormModal({ open: false });
@@ -255,6 +293,31 @@ export default function PublishHistoryPage() {
           </button>
         </div>
 
+        {/* Status filter */}
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          {STATUS_FILTER_OPTIONS.map((opt) => (
+            <button
+              key={opt.label}
+              onClick={() => {
+                setStatusFilter(opt.value);
+                setPage(1);
+              }}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
+                statusFilter === opt.value
+                  ? 'bg-gray-900 text-white border-gray-900'
+                  : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+          {statusFilter && (
+            <span className="text-xs text-gray-400 ml-1">
+              Searching the latest {FILTER_WINDOW} records
+            </span>
+          )}
+        </div>
+
         {/* Card */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           {/* Empty state */}
@@ -274,6 +337,7 @@ export default function PublishHistoryPage() {
                         key={record.id}
                         record={record}
                         onEdit={() => setFormModal({ open: true, record })}
+                        onResolve={() => setResolveTarget(record)}
                         onDelete={() => setDeleteTarget(record)}
                       />
                     ))}
@@ -287,6 +351,9 @@ export default function PublishHistoryPage() {
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider min-w-[140px]">
                         Draft
                       </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider min-w-[110px]">
+                        Status
+                      </th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider min-w-[280px]">
                         Permalink
                       </th>
@@ -294,7 +361,7 @@ export default function PublishHistoryPage() {
                         Schedule
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider min-w-[140px]">
-                        Published At
+                        Attempted At
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider min-w-[100px]">
                         Actions
@@ -321,6 +388,11 @@ export default function PublishHistoryPage() {
                               >
                                 {record.draft?.title ?? record.draftId.slice(0, 8)}
                               </Link>
+                            </td>
+
+                            {/* Status */}
+                            <td className="px-4 py-4">
+                              <PublishRecordStatusBadge status={record.status} />
                             </td>
 
                             {/* Permalink */}
@@ -352,6 +424,14 @@ export default function PublishHistoryPage() {
                             {/* Actions */}
                             <td className="px-4 py-4">
                               <div className="flex items-center gap-1">
+                                {isStuckAttempt(record) && (
+                                  <button
+                                    onClick={() => setResolveTarget(record)}
+                                    className="mr-1 px-2 py-1 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-md hover:bg-amber-100 transition-colors"
+                                  >
+                                    Resolve
+                                  </button>
+                                )}
                                 <button
                                   onClick={() =>
                                     setFormModal({ open: true, record })
@@ -414,6 +494,16 @@ export default function PublishHistoryPage() {
         record={formModal.record}
         onClose={() => setFormModal({ open: false })}
         onSuccess={handleFormSuccess}
+      />
+
+      <ResolveAttemptDialog
+        record={resolveTarget}
+        onClose={() => setResolveTarget(null)}
+        onResolved={() => {
+          setResolveTarget(null);
+          queryClient.invalidateQueries({ queryKey: ['publish-records'] });
+          queryClient.invalidateQueries({ queryKey: ['article-draft-publish-records'] });
+        }}
       />
 
       {/* Delete Confirm Dialog */}

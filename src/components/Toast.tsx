@@ -26,6 +26,21 @@ export default function ToastContainer({ toasts, onRemove }: Props) {
             <XCircle className="w-4 h-4 flex-shrink-0 text-red-200" />
           )}
           <span className="flex-1 leading-snug">{toast.message}</span>
+          {toast.action && (
+            <button
+              onClick={() => {
+                toast.action!.onClick();
+                onRemove(toast.id);
+              }}
+              className={`flex-shrink-0 px-2 py-1 rounded-md text-xs font-semibold transition-colors ${
+                toast.type === 'success'
+                  ? 'bg-white/10 text-white hover:bg-white/20'
+                  : 'bg-white/20 text-white hover:bg-white/30'
+              }`}
+            >
+              {toast.action.label}
+            </button>
+          )}
           <button
             onClick={() => onRemove(toast.id)}
             className="ml-1 p-0.5 opacity-50 hover:opacity-100 transition-opacity rounded"

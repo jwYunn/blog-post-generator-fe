@@ -37,29 +37,30 @@ CRUD management of seed keywords that trigger the generation pipeline.
 **Route**: `/topic-candidates`
 
 ### Purpose
-Generate and evaluate topic candidates for a selected seed. Polling-based UI for async job status.
+Generate topic candidates for a selected seed and approve them. Polling-based UI for async job status.
 
 ### API Calls
 - `topicCandidateApi.getList(params)` — candidate list (polled)
 - `topicSeedApi.getOne(seedId)` — fetch seed context for header
 - `topicSeedApi.generate(seedId)` — enqueue generation job
-- `topicSeedApi.evaluate(seedId)` — enqueue evaluation job
+- `topicSeedApi.evaluate(seedId)` — enqueue a re-score (the "Re-score" button)
+- `topicCandidateApi.updateStatus(id, { status: 'approved' })` — via `TopicCandidateTable`; the page toasts an "Open draft" link to the returned `articleDraftId`
 
 ### State
 - `seedId` from `useSearchParams` (`?seedId=`)
 - `isGenerating` / `isEvaluating` — polling active flags
 - `prevTotalRef` — ref to previous candidate count (generation completion detection)
-- `prevEvaluatedCountRef` — ref to previous evaluated count (evaluation completion detection)
+- `scoreBaselineRef` — latest timestamp on screen when scoring started (scoring completion detection)
 - Polling timeout refs: auto-cancel after 2 minutes
 
 ### Polling Logic
-**Generation**: Polls candidate list every 3s. Stops when `data.total` increases compared to `prevTotalRef`.
+**Generation**: Polls candidate list every 3s. When `data.total` increases compared to `prevTotalRef`, generation is done — but the server chains an evaluation straight after it, so polling carries on as scoring, baselined on the newest `createdAt`.
 
-**Evaluation**: Polls every 3s. Stops when the count of candidates where `overallScore !== null` increases.
+**Scoring** (after generation, or from Re-score): Polls every 3s. Stops once some row's `updatedAt` is newer than the baseline and no pending row on screen is left without an `overallScore`. Re-score baselines on the newest `updatedAt`, since scoring rewrites every pending candidate even when it already had a score.
 
 ### Key Features
 - Seed context bar at top (category badge, priority, active status)
-- Generate and Evaluate buttons side by side
+- Generate and Re-score buttons side by side
 - Loading banners with cancel buttons during polling
 - Sorts candidates by rank/score by default after evaluation
 
@@ -85,10 +86,10 @@ refetchInterval: (query) => {
     : false
 }
 ```
-Automatically stops polling once all drafts reach a terminal state.
+Automatically stops polling once all drafts reach a terminal state. Drafts published from this page are tracked in `publishRequestedIds` state: until the worker moves them off `review_ready` they show "Queued" instead of a Publish button and keep the list polling.
 
 ### Key Features
-- Status filter dropdown
+- Status filter chips (including Publishing / Published)
 - Inline hashtag pills with copy-all button (tab-separated)
 - `formatRelativeTime()` for relative timestamps ("5m ago")
 - Skeleton loading rows
@@ -105,12 +106,15 @@ Automatically stops polling once all drafts reach a terminal state.
 Detailed view of a single draft with interactive pipeline visualization and content preview.
 
 ### API Calls
-- `articleDraftApi.getOne(id)` — polled every 3s while in-progress
-- `articleDraftApi.getPublishRecords(draftId)` — only fetched when `status === 'published'`
+- `articleDraftApi.getOne(id)` — polled every 3s while in-progress, or while the latest attempt is in flight
+- `articleDraftApi.getPublishRecords(draftId)` — always fetched; polled while the latest attempt is in flight (`isAttemptInFlight`). A publish request leaves the draft at `review_ready` until the worker picks it up, so the attempt record is what shows it is under way
 
 ### State
 - `selectedStep` — which pipeline step the user is viewing (`'outline' | 'content' | 'thumbnail' | 'review' | null`)
 - `publishModalOpen` — controls PublishModal visibility
+- `resolveTarget` — the stuck attempt open in `ResolveAttemptDialog`
+- Derived: `failedStage` (`getFailedStage`) — a failed draft with publish records failed while publishing, otherwise at the first generation step with no output
+- Derived: `canPublish` — `review_ready`, or a publish failure with content (shown as "Retry Publish"), and no attempt that is `attempting`/`published`
 - Auto-advances `selectedStep` to the latest available step on data change
 
 ### Pipeline Steps
@@ -119,13 +123,15 @@ Detailed view of a single draft with interactive pipeline visualization and cont
 | `outline` | `draft.outline !== null` | `ArticleDraftOutlineSection` |
 | `content` | `draft.content !== null` | `ArticleDraftContentSection` |
 | `thumbnail` | `draft.thumbnailImageUrl !== null` | Thumbnail image preview |
-| `review` | `status === 'review_ready' \| 'published'` | Full content + publish button |
+| `review` | `status === 'review_ready' \| 'publishing'`, or failed while publishing | Full content |
 
 ### Key Features
 - Copy title to clipboard button
-- Error message display when `status === 'failed'`
-- Publish records section (when published)
-- PublishModal for triggering publish job
+- Error message display when `status === 'failed'`, titled Generation Error or Publish Error
+- Amber alert with a Resolve button when an attempt is stuck (blocks republishing)
+- "Publish requested" banner while an attempt waits for the worker
+- Publish records section for every draft that has records, with status badges
+- PublishModal for triggering publish job (shows the server's 409 message)
 
 ---
 
@@ -147,11 +153,14 @@ View and manage article publish records (audit log of Tistory publishing events)
 - `formTarget` (`undefined` = closed, `null` = create, `PublishRecord` = edit)
 - `deleteTarget` (`null` = closed, `PublishRecord` = confirm delete)
 - `page` — current pagination page
+- `statusFilter` — the API cannot filter by status, so a filtered view loads the latest 100 records and filters them client-side (pagination hidden)
+- `resolveTarget` — stuck attempt open in `ResolveAttemptDialog`
 
 ### Key Features
 - Combobox draft selector with search in create mode (Headless UI Combobox)
 - Schedule mode: `none` / `now` / `schedule` (with datetime picker)
 - Protocol-stripped URL display for permalinks
+- Status column (`PublishRecordStatusBadge`) and a Resolve action on stuck attempts
 - Pagination (limit=20)
 
 ---
