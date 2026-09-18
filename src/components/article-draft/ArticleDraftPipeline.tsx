@@ -98,7 +98,7 @@ function StepIcon({ state }: { state: StepState }) {
       </span>
     );
   }
-  return <span className="w-5 h-5 rounded-full border-2 border-gray-300 bg-white" />;
+  return <span className="block w-5 h-5 rounded-full border-2 border-gray-300 bg-white" />;
 }
 
 function Connector({ done }: { done: boolean }) {
