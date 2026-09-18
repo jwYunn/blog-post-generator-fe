@@ -72,6 +72,16 @@ function SkeletonRow({ index }: { index: number }) {
   );
 }
 
+function SkeletonCard({ index }: { index: number }) {
+  const widths = SKELETON_WIDTHS[index % SKELETON_WIDTHS.length];
+  return (
+    <li className="px-4 py-4 animate-pulse">
+      <div className="h-4 bg-gray-200 rounded" style={{ width: widths[1] }} />
+      <div className="h-5 w-32 bg-gray-100 rounded-full mt-3" />
+    </li>
+  );
+}
+
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return '-';
   return new Date(dateStr).toLocaleDateString('ko-KR', {
@@ -79,6 +89,129 @@ function formatDate(dateStr: string | null): string {
     month: '2-digit',
     day: '2-digit',
   });
+}
+
+// ─── Badges (shared by table rows and mobile cards) ───────────────────────────
+
+function CategoryBadge({ seed }: { seed: TopicSeed }) {
+  return (
+    <span
+      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${CATEGORY_STYLES[seed.category]}`}
+    >
+      {CATEGORY_LABELS[seed.category]}
+    </span>
+  );
+}
+
+function PriorityBadge({ seed }: { seed: TopicSeed }) {
+  return (
+    <span
+      className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold flex-shrink-0 ${PRIORITY_STYLES[seed.priority]}`}
+    >
+      {seed.priority}
+    </span>
+  );
+}
+
+function ActiveBadge({ seed }: { seed: TopicSeed }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${
+        seed.isActive
+          ? 'bg-green-100 text-green-700'
+          : 'bg-gray-100 text-gray-500'
+      }`}
+    >
+      <span
+        className={`w-1.5 h-1.5 rounded-full ${seed.isActive ? 'bg-green-500' : 'bg-gray-400'}`}
+      />
+      {seed.isActive ? 'Active' : 'Inactive'}
+    </span>
+  );
+}
+
+// ─── Error / Empty states (shared by table and card list) ─────────────────────
+
+function ErrorState({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center">
+        <RefreshCw className="w-5 h-5 text-red-400" />
+      </div>
+      <p className="text-gray-500 text-sm">Failed to load data</p>
+      <button
+        onClick={onRetry}
+        className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded-lg transition-colors"
+      >
+        Retry
+      </button>
+    </div>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <span className="text-4xl">🌱</span>
+      <p className="text-gray-500 text-sm mt-1">No seeds found</p>
+      <p className="text-gray-400 text-xs">Click the New Seed button to get started</p>
+    </div>
+  );
+}
+
+// ─── Mobile card (replaces a table row below the md breakpoint) ───────────────
+
+function SeedCard({
+  seed,
+  onOpen,
+  onEdit,
+  onDelete,
+}: {
+  seed: TopicSeed;
+  onOpen: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <li onClick={onOpen} className="px-4 py-4 cursor-pointer active:bg-blue-50/40 transition-colors">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3 min-w-0">
+          <PriorityBadge seed={seed} />
+          <div className="min-w-0 pt-1">
+            <p className="font-medium text-gray-900 leading-snug break-words">{seed.seed}</p>
+            {seed.normalizedSeed !== seed.seed && (
+              <p className="text-xs text-gray-400 mt-0.5 break-words">{seed.normalizedSeed}</p>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1 flex-shrink-0 -mr-2 -mt-1">
+          <button
+            onClick={(e) => { e.stopPropagation(); onEdit(); }}
+            title="Edit"
+            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+          >
+            <Pencil className="w-4 h-4" />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+            title="Delete"
+            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 mt-3 pl-10">
+        <CategoryBadge seed={seed} />
+        <ActiveBadge seed={seed} />
+        <span className="text-xs text-gray-400 tabular-nums">
+          Used {seed.usedCount.toLocaleString()} · {seed.lastUsedAt ? `Last ${formatDate(seed.lastUsedAt)}` : 'Never used'}
+        </span>
+      </div>
+    </li>
+  );
 }
 
 // ─── Props ─────────────────────────────────────────────────────────────────────
@@ -126,7 +259,50 @@ export default function TopicSeedTable({
       {/* Top fetching indicator */}
       <div className={`h-0.5 bg-blue-500 transition-all ${isFetching && !isLoading ? 'opacity-100' : 'opacity-0'}`} />
 
-      <div className="overflow-x-auto">
+      {/* Mobile sort bar — stands in for the sortable table headers */}
+      <div className="md:hidden flex items-center gap-1 px-4 py-2.5 border-b border-gray-100 bg-gray-50/80 overflow-x-auto">
+        <span className="text-xs text-gray-400 font-medium mr-1 flex-shrink-0">Sort</span>
+        {headers.filter((h) => h.sortable).map((h) => (
+          <button
+            key={h.key}
+            onClick={() => onSort(h.sortable!)}
+            className={`flex items-center flex-shrink-0 px-2.5 py-1.5 text-xs rounded-lg font-medium whitespace-nowrap transition-colors ${
+              params.sortBy === h.sortable ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
+            }`}
+          >
+            {h.label}
+            <SortIcon column={h.sortable!} params={params} />
+          </button>
+        ))}
+      </div>
+
+      {/* Mobile card list */}
+      <ul className="md:hidden divide-y divide-gray-50">
+        {isLoading ? (
+          Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} index={i} />)
+        ) : isError ? (
+          <li className="px-4 py-20 text-center">
+            <ErrorState onRetry={onRetry} />
+          </li>
+        ) : data.length === 0 ? (
+          <li className="px-4 py-20 text-center">
+            <EmptyState />
+          </li>
+        ) : (
+          data.map((seed) => (
+            <SeedCard
+              key={seed.id}
+              seed={seed}
+              onOpen={() => navigate(`/topic-candidates?seedId=${seed.id}`)}
+              onEdit={() => onEdit(seed)}
+              onDelete={() => onDelete(seed)}
+            />
+          ))
+        )}
+      </ul>
+
+      {/* Desktop table */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm">
           {/* Header */}
           <thead>
@@ -155,29 +331,14 @@ export default function TopicSeedTable({
               /* Error */
               <tr>
                 <td colSpan={8} className="px-4 py-20 text-center">
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center">
-                      <RefreshCw className="w-5 h-5 text-red-400" />
-                    </div>
-                    <p className="text-gray-500 text-sm">Failed to load data</p>
-                    <button
-                      onClick={onRetry}
-                      className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded-lg transition-colors"
-                    >
-                      Retry
-                    </button>
-                  </div>
+                  <ErrorState onRetry={onRetry} />
                 </td>
               </tr>
             ) : data.length === 0 ? (
               /* Empty list */
               <tr>
                 <td colSpan={8} className="px-4 py-20 text-center">
-                  <div className="flex flex-col items-center gap-2">
-                    <span className="text-4xl">🌱</span>
-                    <p className="text-gray-500 text-sm mt-1">No seeds found</p>
-                    <p className="text-gray-400 text-xs">Click the New Seed button to get started</p>
-                  </div>
+                  <EmptyState />
                 </td>
               </tr>
             ) : (
@@ -198,36 +359,17 @@ export default function TopicSeedTable({
 
                   {/* category */}
                   <td className="px-4 py-3.5">
-                    <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${CATEGORY_STYLES[seed.category]}`}
-                    >
-                      {CATEGORY_LABELS[seed.category]}
-                    </span>
+                    <CategoryBadge seed={seed} />
                   </td>
 
                   {/* priority */}
                   <td className="px-4 py-3.5">
-                    <span
-                      className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${PRIORITY_STYLES[seed.priority]}`}
-                    >
-                      {seed.priority}
-                    </span>
+                    <PriorityBadge seed={seed} />
                   </td>
 
                   {/* isActive */}
                   <td className="px-4 py-3.5">
-                    <span
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        seed.isActive
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-gray-100 text-gray-500'
-                      }`}
-                    >
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full ${seed.isActive ? 'bg-green-500' : 'bg-gray-400'}`}
-                      />
-                      {seed.isActive ? 'Active' : 'Inactive'}
-                    </span>
+                    <ActiveBadge seed={seed} />
                   </td>
 
                   {/* usedCount */}

@@ -67,6 +67,17 @@ function SkeletonRow({ index }: { index: number }) {
   );
 }
 
+function SkeletonCard({ index }: { index: number }) {
+  const widths = SKELETON_WIDTHS[index % SKELETON_WIDTHS.length];
+  return (
+    <li className="px-4 py-4 animate-pulse">
+      <div className="h-4 bg-gray-200 rounded" style={{ width: widths[0] }} />
+      <div className="h-5 w-40 bg-gray-100 rounded-full mt-3" />
+      <div className="h-8 bg-gray-100 rounded-lg mt-3" />
+    </li>
+  );
+}
+
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('ko-KR', {
     year: 'numeric',
@@ -75,6 +86,178 @@ function formatDate(dateStr: string): string {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+// ─── Badges & buttons (shared by table rows and mobile cards) ─────────────────
+
+function StatusBadge({ status }: { status: TopicCandidateStatus }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[status]}`}
+    >
+      <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[status]}`} />
+      {STATUS_LABELS[status]}
+    </span>
+  );
+}
+
+function SearchIntentBadge({ value }: { value: string }) {
+  return (
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${SEARCH_INTENT_STYLES[value] ?? 'bg-gray-100 text-gray-600'}`}
+    >
+      {value}
+    </span>
+  );
+}
+
+function TargetReaderBadge({ value }: { value: string }) {
+  return (
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${TARGET_READER_STYLES[value] ?? 'bg-gray-100 text-gray-600'}`}
+    >
+      {value}
+    </span>
+  );
+}
+
+function VerdictBadge({ verdict }: { verdict: NonNullable<TopicCandidate['verdict']> }) {
+  const style = VERDICT_STYLES[verdict];
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${style.badge}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
+      {verdict.charAt(0).toUpperCase() + verdict.slice(1)}
+    </span>
+  );
+}
+
+function DetailButton({ onClick, className }: { onClick: () => void; className: string }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`inline-flex items-center gap-1 rounded-md font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors ${className}`}
+    >
+      <Info className="w-3.5 h-3.5" />
+      Detail
+    </button>
+  );
+}
+
+function ApproveButton({
+  canApprove,
+  isApproving,
+  onClick,
+  className,
+}: {
+  canApprove: boolean;
+  isApproving: boolean;
+  onClick: () => void;
+  className: string;
+}) {
+  return (
+    <button
+      onClick={() => canApprove && onClick()}
+      disabled={!canApprove || isApproving}
+      title={
+        !canApprove
+          ? 'Already approved'
+          : 'Approve and start article generation'
+      }
+      className={`inline-flex items-center gap-1 rounded-md font-medium transition-colors ${
+        canApprove && !isApproving
+          ? 'text-green-700 bg-green-50 hover:bg-green-100'
+          : 'text-gray-300 bg-gray-50 cursor-not-allowed'
+      } ${className}`}
+    >
+      {isApproving ? (
+        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+      ) : (
+        <CheckCircle className="w-3.5 h-3.5" />
+      )}
+      Approve
+    </button>
+  );
+}
+
+// ─── Error / Empty states (shared by table and card list) ─────────────────────
+
+function ErrorState({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center">
+        <RefreshCw className="w-5 h-5 text-red-400" />
+      </div>
+      <p className="text-gray-500 text-sm">Failed to load data</p>
+      <button
+        onClick={onRetry}
+        className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded-lg transition-colors"
+      >
+        Retry
+      </button>
+    </div>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <span className="text-4xl">📭</span>
+      <p className="text-gray-500 text-sm mt-1">No candidates found</p>
+      <p className="text-gray-400 text-xs">Run Generate on a Topic Seed to create candidates</p>
+    </div>
+  );
+}
+
+// ─── Mobile card (replaces a table row below the md breakpoint) ───────────────
+
+function CandidateCard({
+  candidate,
+  isApproving,
+  onDetail,
+  onApprove,
+}: {
+  candidate: TopicCandidate;
+  isApproving: boolean;
+  onDetail: () => void;
+  onApprove: () => void;
+}) {
+  const isEvaluated = candidate.overallScore != null;
+  const canApprove = candidate.status === 'pending' || candidate.status === 'rejected';
+
+  return (
+    <li className="px-4 py-4">
+      <div className="flex items-start justify-between gap-3">
+        <p className="min-w-0 font-medium text-gray-900 leading-snug break-words">{candidate.title}</p>
+        {isEvaluated && (
+          <div className="flex-shrink-0 text-right">
+            <p className="text-sm font-semibold text-gray-800 tabular-nums">
+              {Number(candidate.overallScore).toFixed(1)}
+            </p>
+            {candidate.rank != null && (
+              <p className="text-xs font-bold text-gray-500 tabular-nums">#{candidate.rank}</p>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-1.5 mt-2">
+        <StatusBadge status={candidate.status} />
+        {candidate.verdict && <VerdictBadge verdict={candidate.verdict} />}
+        {candidate.searchIntent && <SearchIntentBadge value={candidate.searchIntent} />}
+        {candidate.targetReader && <TargetReaderBadge value={candidate.targetReader} />}
+      </div>
+
+      <div className="flex items-center gap-2 mt-3">
+        <DetailButton onClick={onDetail} className="flex-1 justify-center px-3 py-2 text-sm" />
+        <ApproveButton
+          canApprove={canApprove}
+          isApproving={isApproving}
+          onClick={onApprove}
+          className="flex-1 justify-center px-3 py-2 text-sm"
+        />
+      </div>
+    </li>
+  );
 }
 
 // ─── Detail Modal ──────────────────────────────────────────────────────────────
@@ -86,7 +269,7 @@ function DetailModal({ candidate, onClose }: { candidate: TopicCandidate; onClos
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-xl mx-4"
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-xl mx-4 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -171,6 +354,11 @@ function DetailModal({ candidate, onClose }: { candidate: TopicCandidate; onClos
 
 type SortableColumn = NonNullable<TopicCandidateListParams['sortBy']>;
 
+const MOBILE_SORT_OPTIONS: { column: SortableColumn; label: string }[] = [
+  { column: 'overallScore', label: 'Score' },
+  { column: 'rank',         label: 'Rank'  },
+];
+
 interface Props {
   data: TopicCandidate[];
   isLoading: boolean;
@@ -229,7 +417,50 @@ export default function TopicCandidateTable({
           className={`h-0.5 bg-blue-500 transition-all ${isFetching && !isLoading ? 'opacity-100' : 'opacity-0'}`}
         />
 
-        <div className="overflow-x-auto">
+        {/* Mobile sort bar — stands in for the sortable Score / Rank headers */}
+        <div className="md:hidden flex items-center gap-1 px-4 py-2.5 border-b border-gray-100 bg-gray-50/80">
+          <span className="text-xs text-gray-400 font-medium mr-1">Sort</span>
+          {MOBILE_SORT_OPTIONS.map(({ column, label }) => (
+            <button
+              key={column}
+              onClick={() => onSort(column)}
+              className={`flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-lg font-medium transition-colors ${
+                params.sortBy === column ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
+              }`}
+            >
+              {label}
+              <SortIcon column={column} />
+            </button>
+          ))}
+        </div>
+
+        {/* Mobile card list */}
+        <ul className="md:hidden divide-y divide-gray-50">
+          {isLoading ? (
+            Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} index={i} />)
+          ) : isError ? (
+            <li className="px-4 py-20 text-center">
+              <ErrorState onRetry={onRetry} />
+            </li>
+          ) : data.length === 0 ? (
+            <li className="px-4 py-20 text-center">
+              <EmptyState />
+            </li>
+          ) : (
+            data.map((candidate) => (
+              <CandidateCard
+                key={candidate.id}
+                candidate={candidate}
+                isApproving={approvingId === candidate.id}
+                onDetail={() => setDetailCandidate(candidate)}
+                onApprove={() => approveMutation.mutate(candidate.id)}
+              />
+            ))
+          )}
+        </ul>
+
+        {/* Desktop table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/80">
@@ -278,34 +509,17 @@ export default function TopicCandidateTable({
               ) : isError ? (
                 <tr>
                   <td colSpan={COL_SPAN} className="px-4 py-20 text-center">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center">
-                        <RefreshCw className="w-5 h-5 text-red-400" />
-                      </div>
-                      <p className="text-gray-500 text-sm">Failed to load data</p>
-                      <button
-                        onClick={onRetry}
-                        className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded-lg transition-colors"
-                      >
-                        Retry
-                      </button>
-                    </div>
+                    <ErrorState onRetry={onRetry} />
                   </td>
                 </tr>
               ) : data.length === 0 ? (
                 <tr>
                   <td colSpan={COL_SPAN} className="px-4 py-20 text-center">
-                    <div className="flex flex-col items-center gap-2">
-                      <span className="text-4xl">📭</span>
-                      <p className="text-gray-500 text-sm mt-1">No candidates found</p>
-                      <p className="text-gray-400 text-xs">Run Generate on a Topic Seed to create candidates</p>
-                    </div>
+                    <EmptyState />
                   </td>
                 </tr>
               ) : (
                 data.map((candidate) => {
-                  const verdict = candidate.verdict;
-                  const verdictStyle = verdict ? VERDICT_STYLES[verdict] : null;
                   const isEvaluated = candidate.overallScore != null;
                   const canApprove = candidate.status === 'pending' || candidate.status === 'rejected';
                   const isApproving = approvingId === candidate.id;
@@ -320,11 +534,7 @@ export default function TopicCandidateTable({
                       {/* Search Intent */}
                       <td className="px-4 py-3.5">
                         {candidate.searchIntent ? (
-                          <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${SEARCH_INTENT_STYLES[candidate.searchIntent] ?? 'bg-gray-100 text-gray-600'}`}
-                          >
-                            {candidate.searchIntent}
-                          </span>
+                          <SearchIntentBadge value={candidate.searchIntent} />
                         ) : (
                           <span className="text-gray-300">—</span>
                         )}
@@ -333,11 +543,7 @@ export default function TopicCandidateTable({
                       {/* Target Reader */}
                       <td className="px-4 py-3.5">
                         {candidate.targetReader ? (
-                          <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${TARGET_READER_STYLES[candidate.targetReader] ?? 'bg-gray-100 text-gray-600'}`}
-                          >
-                            {candidate.targetReader}
-                          </span>
+                          <TargetReaderBadge value={candidate.targetReader} />
                         ) : (
                           <span className="text-gray-300">—</span>
                         )}
@@ -345,11 +551,8 @@ export default function TopicCandidateTable({
 
                       {/* Verdict */}
                       <td className="px-4 py-3.5">
-                        {verdictStyle && verdict ? (
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${verdictStyle.badge}`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${verdictStyle.dot}`} />
-                            {verdict.charAt(0).toUpperCase() + verdict.slice(1)}
-                          </span>
+                        {candidate.verdict ? (
+                          <VerdictBadge verdict={candidate.verdict} />
                         ) : (
                           <span className="text-gray-300">—</span>
                         )}
@@ -357,48 +560,25 @@ export default function TopicCandidateTable({
 
                       {/* Status */}
                       <td className="px-4 py-3.5">
-                        <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[candidate.status]}`}
-                        >
-                          <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[candidate.status]}`} />
-                          {STATUS_LABELS[candidate.status]}
-                        </span>
+                        <StatusBadge status={candidate.status} />
                       </td>
 
                       {/* Detail 버튼 */}
                       <td className="px-4 py-3.5">
-                        <button
+                        <DetailButton
                           onClick={() => setDetailCandidate(candidate)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors"
-                        >
-                          <Info className="w-3.5 h-3.5" />
-                          Detail
-                        </button>
+                          className="px-2.5 py-1 text-xs"
+                        />
                       </td>
 
                       {/* Approve button */}
                       <td className="px-4 py-3.5">
-                        <button
-                          onClick={() => canApprove && approveMutation.mutate(candidate.id)}
-                          disabled={!canApprove || isApproving}
-                          title={
-                            !canApprove
-                              ? 'Already approved'
-                              : 'Approve and start article generation'
-                          }
-                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-                            canApprove && !isApproving
-                              ? 'text-green-700 bg-green-50 hover:bg-green-100'
-                              : 'text-gray-300 bg-gray-50 cursor-not-allowed'
-                          }`}
-                        >
-                          {isApproving ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <CheckCircle className="w-3.5 h-3.5" />
-                          )}
-                          Approve
-                        </button>
+                        <ApproveButton
+                          canApprove={canApprove}
+                          isApproving={isApproving}
+                          onClick={() => approveMutation.mutate(candidate.id)}
+                          className="px-2.5 py-1 text-xs"
+                        />
                       </td>
 
                       {/* Score */}
