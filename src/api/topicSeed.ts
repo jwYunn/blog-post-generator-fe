@@ -13,10 +13,29 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+// The list endpoint refuses a larger page
+const MAX_PAGE_LIMIT = 100;
+
 export const topicSeedApi = {
   getList: async (params: TopicSeedListParams): Promise<TopicSeedListResponse> => {
     const { data } = await api.get<TopicSeedListResponse>('/topic-seeds', { params });
     return data;
+  },
+
+  /**
+   * Every seed, newest first, for pickers and name lookups that cannot stop at
+   * one page. Reads the first page for the total, then the rest in parallel.
+   */
+  getAll: async (): Promise<TopicSeed[]> => {
+    const params: TopicSeedListParams = { limit: MAX_PAGE_LIMIT, sortBy: 'createdAt', order: 'desc' };
+    const first = await topicSeedApi.getList({ ...params, page: 1 });
+    const pageCount = Math.ceil(first.total / MAX_PAGE_LIMIT);
+    const rest = await Promise.all(
+      Array.from({ length: Math.max(0, pageCount - 1) }, (_, i) =>
+        topicSeedApi.getList({ ...params, page: i + 2 }),
+      ),
+    );
+    return [first, ...rest].flatMap((page) => page.data);
   },
 
   create: async (

@@ -155,22 +155,33 @@ export default function TopicCandidatePage() {
     }
   };
 
-  // Seed 드롭다운 + 컨텍스트 바용 목록
-  const { data: seedsData } = useQuery({
-    queryKey: ['topic-seeds-all'],
-    queryFn: () => topicSeedApi.getList({ limit: 100, sortBy: 'createdAt', order: 'desc' }),
+  // Every seed, for the dropdown and for naming each row's seed when the list
+  // spans them all. One page would stop at the API's 100-seed limit.
+  const { data: seeds = [] } = useQuery({
+    queryKey: ['topic-seeds', 'all'],
+    queryFn: topicSeedApi.getAll,
     staleTime: 60_000,
   });
 
-  // 현재 선택된 seed 객체
-  const selectedSeed = params.topicSeedId
-    ? (seedsData?.data ?? []).find((s) => s.id === params.topicSeedId)
-    : undefined;
+  // The selected seed is fetched on its own, so the context bar and Generate
+  // never depend on it having made it into the list above
+  const { data: selectedSeed, isError: isSeedError } = useQuery({
+    queryKey: ['topic-seeds', params.topicSeedId],
+    queryFn: () => topicSeedApi.getOne(params.topicSeedId!),
+    enabled: !!params.topicSeedId,
+    staleTime: 30_000,
+  });
+
+  const generateBlockedReason = !selectedSeed
+    ? (isSeedError ? 'Seed not found' : 'Loading seed…')
+    : !selectedSeed.isActive
+      ? 'Cannot generate for inactive seeds'
+      : null;
 
   // Rows from every seed need to say whose they are
   const seedNames = params.topicSeedId
     ? undefined
-    : new Map((seedsData?.data ?? []).map((s) => [s.id, s.seed]));
+    : new Map(seeds.map((s) => [s.id, s.seed]));
 
   // ─── Generate mutation ───────────────────────────────────────────────────────
   const generateMutation = useMutation({
@@ -268,10 +279,10 @@ export default function TopicCandidatePage() {
               {/* Generate */}
               <button
                 onClick={() => generateMutation.mutate(params.topicSeedId!)}
-                disabled={isBusy || !selectedSeed?.isActive}
-                title={!selectedSeed?.isActive ? 'Cannot generate for inactive seeds' : 'Generate candidates'}
+                disabled={isBusy || generateBlockedReason !== null}
+                title={generateBlockedReason ?? 'Generate candidates'}
                 className={`flex items-center gap-2 text-sm font-medium px-4 py-2.5 rounded-lg transition-colors shadow-sm ${
-                  selectedSeed?.isActive && !isBusy
+                  generateBlockedReason === null && !isBusy
                     ? 'bg-violet-600 text-white hover:bg-violet-700 active:bg-violet-800'
                     : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                 }`}
@@ -346,7 +357,7 @@ export default function TopicCandidatePage() {
             <span className="text-sm text-blue-400 font-medium shrink-0">Seed</span>
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 flex-1 min-w-0">
               <span className="font-semibold text-blue-900 truncate">
-                {selectedSeed?.seed ?? params.topicSeedId}
+                {selectedSeed?.seed ?? (isSeedError ? params.topicSeedId : '…')}
               </span>
               {selectedSeed && (
                 <>
@@ -385,7 +396,7 @@ export default function TopicCandidatePage() {
         {/* 필터 */}
         <TopicCandidateFilters
           params={params}
-          seeds={seedsData?.data ?? []}
+          seeds={seeds}
           onChange={handleFilterChange}
         />
 

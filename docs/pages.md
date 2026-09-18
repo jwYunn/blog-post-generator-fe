@@ -41,7 +41,8 @@ Generate topic candidates for a selected seed and approve them. Polling-based UI
 
 ### API Calls
 - `topicCandidateApi.getList(params)` — candidate list (polled)
-- `topicSeedApi.getOne(seedId)` — fetch seed context for header
+- `topicSeedApi.getOne(seedId)` — the selected seed, for the context bar and whether Generate is allowed (`['topic-seeds', seedId]`). Fetched on its own so it never depends on the list below
+- `topicSeedApi.getAll()` — every seed, for the seed dropdown and the seed names on rows in the all-seeds view (`['topic-seeds', 'all']`)
 - `topicSeedApi.generate(seedId)` — enqueue generation job
 - `topicSeedApi.evaluate(seedId)` — enqueue a re-score (the "Re-score" button)
 - `topicCandidateApi.updateStatus(id, { status: 'approved' })` — via `TopicCandidateTable`; the page toasts an "Open draft" link to the returned `articleDraftId`
