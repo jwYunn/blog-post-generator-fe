@@ -46,7 +46,10 @@ export default function TopicCandidatePage() {
   const [isEvaluating, setIsEvaluating] = useState(false);
 
   const prevTotalRef = useRef<number>(0);
-  const prevEvaluatedCountRef = useRef<number>(0);
+  // Latest updatedAt on screen when scoring started. Scoring rewrites every
+  // pending candidate, so a row newer than this means the run has landed -
+  // which also covers re-scoring candidates that already had a score.
+  const scoreBaselineRef = useRef<number>(0);
 
   const generateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const evaluateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -68,24 +71,35 @@ export default function TopicCandidatePage() {
     refetchInterval: isGenerating || isEvaluating ? POLL_INTERVAL_MS : false,
   });
 
-  // 새 후보 감지 → generate 폴링 중단
+  // New candidates appeared -> generation is done, but the server chains
+  // scoring straight after it, so keep polling until the scores land too
   useEffect(() => {
     if (!isGenerating) return;
     const currentTotal = data?.total ?? 0;
     if (currentTotal > prevTotalRef.current) {
       const added = currentTotal - prevTotalRef.current;
       stopGeneratePolling();
-      addToast(`${added} candidate${added > 1 ? 's' : ''} generated!`, 'success');
+      addToast(`${added} candidate${added > 1 ? 's' : ''} generated — scoring them now`, 'success');
+      // Measured from the newest creation rather than the newest update: if
+      // scoring already finished before this poll saw the new rows, their
+      // scored updatedAt would otherwise become the baseline and never be beaten
+      startScorePolling(latestTimestamp('createdAt'));
     }
   }, [data?.total, isGenerating]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 평가 완료 감지 → evaluate 폴링 중단 (overallScore가 채워진 수 증가)
+  // Scoring is done once rows have been rewritten and none on screen is left
+  // pending without a score
   useEffect(() => {
-    if (!isEvaluating) return;
-    const evaluatedCount = (data?.data ?? []).filter((c) => c.overallScore !== null).length;
-    if (evaluatedCount > prevEvaluatedCountRef.current) {
+    if (!isEvaluating || !data) return;
+    const rescored = data.data.filter(
+      (c) => Date.parse(c.updatedAt) > scoreBaselineRef.current,
+    ).length;
+    const unscored = data.data.filter(
+      (c) => c.status === 'pending' && c.overallScore === null,
+    ).length;
+    if (rescored > 0 && unscored === 0) {
       stopEvaluatePolling();
-      addToast(`Evaluation complete — ${evaluatedCount} candidates scored!`, 'success');
+      addToast(`Scoring complete — ${rescored} candidate${rescored > 1 ? 's' : ''} scored`, 'success');
     }
   }, [data?.data, isEvaluating]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -103,6 +117,20 @@ export default function TopicCandidatePage() {
       clearTimeout(generateTimeoutRef.current);
       generateTimeoutRef.current = null;
     }
+  };
+
+  const latestTimestamp = (field: 'createdAt' | 'updatedAt') =>
+    Math.max(0, ...(data?.data ?? []).map((c) => Date.parse(c[field])));
+
+  const startScorePolling = (baseline = latestTimestamp('updatedAt')) => {
+    scoreBaselineRef.current = baseline;
+    setIsEvaluating(true);
+
+    if (evaluateTimeoutRef.current) clearTimeout(evaluateTimeoutRef.current);
+    evaluateTimeoutRef.current = setTimeout(() => {
+      setIsEvaluating(false);
+      addToast('Scoring is taking longer than expected. Please refresh manually.', 'error');
+    }, POLL_TIMEOUT_MS);
   };
 
   const stopEvaluatePolling = () => {
@@ -150,15 +178,7 @@ export default function TopicCandidatePage() {
   const evaluateMutation = useMutation({
     mutationFn: (seedId: string) => topicSeedApi.evaluate(seedId),
     onSuccess: () => {
-      prevEvaluatedCountRef.current = (data?.data ?? []).filter(
-        (c) => c.overallScore !== null,
-      ).length;
-      setIsEvaluating(true);
-
-      evaluateTimeoutRef.current = setTimeout(() => {
-        setIsEvaluating(false);
-        addToast('Evaluation is taking longer than expected. Please refresh manually.', 'error');
-      }, POLL_TIMEOUT_MS);
+      startScorePolling();
     },
     onError: (error) => {
       const message =
@@ -236,11 +256,11 @@ export default function TopicCandidatePage() {
                 {isGenerating ? 'Generating...' : 'Generate'}
               </button>
 
-              {/* Evaluate */}
+              {/* Re-score - scoring already runs after every Generate */}
               <button
                 onClick={() => evaluateMutation.mutate(params.topicSeedId!)}
                 disabled={isBusy}
-                title="Evaluate candidates with GPT"
+                title="Re-score pending candidates. Generate scores new candidates automatically."
                 className={`flex items-center gap-2 text-sm font-medium px-4 py-2.5 rounded-lg transition-colors shadow-sm ${
                   !isBusy
                     ? 'bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800'
@@ -252,7 +272,7 @@ export default function TopicCandidatePage() {
                 ) : (
                   <FlaskConical className="w-4 h-4" />
                 )}
-                {isEvaluating ? 'Evaluating...' : 'Evaluate'}
+                {isEvaluating ? 'Scoring...' : 'Re-score'}
               </button>
             </div>
           )}
@@ -280,7 +300,7 @@ export default function TopicCandidatePage() {
           <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-2.5 mb-4">
             <Loader2 className="w-4 h-4 text-emerald-500 animate-spin shrink-0" />
             <p className="text-sm text-emerald-700 font-medium">
-              Evaluating candidates with GPT — polling every 3 seconds…
+              Scoring candidates — polling every 3 seconds…
             </p>
             <button
               onClick={stopEvaluatePolling}
