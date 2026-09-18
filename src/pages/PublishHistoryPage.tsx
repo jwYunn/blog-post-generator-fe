@@ -48,6 +48,16 @@ function SkeletonRow() {
   );
 }
 
+function SkeletonCard() {
+  return (
+    <li className="px-4 py-4 animate-pulse">
+      <div className="h-4 w-3/4 bg-gray-100 rounded" />
+      <div className="h-3 w-1/2 bg-gray-100 rounded mt-2" />
+      <div className="h-5 w-20 bg-gray-100 rounded-full mt-3" />
+    </li>
+  );
+}
+
 // ─── ScheduleCell ─────────────────────────────────────────────────────────────
 
 function ScheduleCell({ record }: { record: PublishRecord }) {
@@ -72,6 +82,66 @@ function ScheduleCell({ record }: { record: PublishRecord }) {
         {formatDate(record.schedule.scheduledAt)}
       </p>
     </div>
+  );
+}
+
+// ─── RecordCard (replaces a table row below the md breakpoint) ────────────────
+
+function RecordCard({
+  record,
+  onEdit,
+  onDelete,
+}: {
+  record: PublishRecord;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <li className="px-4 py-4">
+      <div className="flex items-start justify-between gap-3">
+        <Link
+          to={`/article-drafts/${record.draftId}`}
+          className="min-w-0 text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline leading-snug line-clamp-2 break-words"
+        >
+          {record.draft?.title ?? record.draftId.slice(0, 8)}
+        </Link>
+
+        <div className="flex items-center gap-1 flex-shrink-0 -mr-2 -mt-1">
+          <button
+            onClick={onEdit}
+            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            title="Edit"
+          >
+            <Pencil className="w-4 h-4" />
+          </button>
+          <button
+            onClick={onDelete}
+            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            title="Delete"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {record.permalink && (
+        <a
+          href={record.permalink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block mt-1.5 text-xs text-blue-600 hover:text-blue-800 hover:underline break-all"
+        >
+          {stripProtocol(record.permalink)}
+        </a>
+      )}
+
+      <div className="flex items-end justify-between gap-3 mt-3">
+        <ScheduleCell record={record} />
+        <span className="text-xs text-gray-400 tabular-nums whitespace-nowrap">
+          {formatDate(record.createdAt)}
+        </span>
+      </div>
+    </li>
   );
 }
 
@@ -195,7 +265,22 @@ export default function PublishHistoryPage() {
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto">
+              {/* Mobile card list */}
+              <ul className="md:hidden divide-y divide-gray-50">
+                {isLoading
+                  ? Array.from({ length: 5 }).map((_, i) => <SkeletonCard key={i} />)
+                  : records.map((record) => (
+                      <RecordCard
+                        key={record.id}
+                        record={record}
+                        onEdit={() => setFormModal({ open: true, record })}
+                        onDelete={() => setDeleteTarget(record)}
+                      />
+                    ))}
+              </ul>
+
+              {/* Desktop table */}
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-100 bg-gray-50/80">
