@@ -1,9 +1,9 @@
 import axios from 'axios';
 import type {
-  TopicCandidate,
   TopicCandidateListResponse,
   TopicCandidateListParams,
   UpdateTopicCandidateStatusRequest,
+  UpdateTopicCandidateStatusResponse,
   PaginatedCandidates,
   CandidateListQuery,
 } from '../types/topicCandidate';
@@ -19,8 +19,14 @@ export const topicCandidateApi = {
     return data;
   },
 
-  updateStatus: async (id: string, body: UpdateTopicCandidateStatusRequest): Promise<TopicCandidate> => {
-    const { data } = await api.patch<TopicCandidate>(`/topic-candidates/${id}/status`, body);
+  updateStatus: async (
+    id: string,
+    body: UpdateTopicCandidateStatusRequest,
+  ): Promise<UpdateTopicCandidateStatusResponse> => {
+    const { data } = await api.patch<UpdateTopicCandidateStatusResponse>(
+      `/topic-candidates/${id}/status`,
+      body,
+    );
     return data;
   },
 

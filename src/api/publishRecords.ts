@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { PublishRecord } from '../types/articleDraft';
+import type { PublishRecord, PublishRecordStatus } from '../types/articleDraft';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000',
@@ -13,12 +13,18 @@ export interface PublishRecordListParams {
 
 export interface CreatePublishRecordPayload {
   draftId: string;
+  /** Server defaults to "published": a hand-entered record documents a live post */
+  status?: PublishRecordStatus;
+  blogName?: string | null;
   permalink?: string | null;
   schedule?: { mode: 'now' } | { mode: 'schedule'; scheduledAt: string } | null;
   meta?: Record<string, unknown> | null;
 }
 
 export interface UpdatePublishRecordPayload {
+  /** Setting "failed" on an attempting record is what unblocks republishing */
+  status?: PublishRecordStatus;
+  blogName?: string | null;
   permalink?: string | null;
   schedule?: { mode: 'now' } | { mode: 'schedule'; scheduledAt: string } | null;
   meta?: Record<string, unknown> | null;

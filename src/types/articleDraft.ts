@@ -68,14 +68,28 @@ export interface CreatePublishJobDto {
   scheduledAt?: string;
 }
 
+export interface PublishJobResponse {
+  jobId: string;
+  /** Written as "attempting" before the job is queued */
+  publishRecordId: string;
+}
+
+/**
+ * Outcome of one publish attempt.
+ * - attempting: started, outcome unknown - a post may already be live.
+ *   Blocks republishing until someone checks the blog and resolves it.
+ * - published: the post went up. Also blocks republishing.
+ * - failed: stopped before anything was posted, so a retry is safe.
+ */
+export type PublishRecordStatus = 'attempting' | 'published' | 'failed';
+
 export interface PublishRecord {
   id: string;
   draftId: string;
-  draft?: {
-    id: string;
-    title: string;
-    status: ArticleDraftStatus;
-  };
+  /** Joined on list endpoints only */
+  draft?: ArticleDraft;
+  status: PublishRecordStatus;
+  blogName: string | null;
   permalink: string | null;
   schedule: { mode: 'now' } | { mode: 'schedule'; scheduledAt: string } | null;
   meta: Record<string, unknown> | null;

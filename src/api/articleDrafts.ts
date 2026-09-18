@@ -4,6 +4,7 @@ import type {
   ArticleDraftListParams,
   PaginatedArticleDrafts,
   CreatePublishJobDto,
+  PublishJobResponse,
   PublishRecord,
 } from '../types/articleDraft';
 
@@ -26,8 +27,8 @@ export const articleDraftApi = {
   publishDraft: async (
     id: string,
     dto: CreatePublishJobDto,
-  ): Promise<{ jobId: string }> => {
-    const { data } = await api.post<{ jobId: string }>(
+  ): Promise<PublishJobResponse> => {
+    const { data } = await api.post<PublishJobResponse>(
       `/article-drafts/${id}/publish`,
       dto,
     );
