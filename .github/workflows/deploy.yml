@@ -90,7 +90,8 @@ jobs:
 
       # No files are copied: the compose file that defines this service belongs
       # to the backend repository and is deployed by its own pipeline. This job
-      # only swaps the image the fe service runs.
+      # only swaps the image the fe service runs, and records it in the
+      # server's .env so the backend's deploy keeps it.
       - name: Deploy and verify
         uses: appleboy/ssh-action@v1
         with:
@@ -107,6 +108,19 @@ jobs:
 
             export FE_IMAGE
             echo "Deploying $FE_IMAGE"
+
+            # Pin the image in .env as well. The backend's deploy runs a bare
+            # `docker compose up -d`, where FE_IMAGE is unset and compose falls
+            # back to a local blog-post-generator-fe:latest. This job only pulls
+            # sha- tags, so that local latest is stale: every backend deploy
+            # recreated fe from it and rolled the UI back to an old build.
+            # Recorded here, the bare command resolves to this deploy's image
+            # and leaves fe alone. The exported variable still wins for this run.
+            if grep -q '^FE_IMAGE=' .env; then
+              sed -i.bak "s|^FE_IMAGE=.*|FE_IMAGE=${FE_IMAGE}|" .env && rm -f .env.bak
+            else
+              printf '\n# Written by the FE deploy so a bare `docker compose up` uses this build\nFE_IMAGE=%s\n' "${FE_IMAGE}" >> .env
+            fi
 
             docker compose pull fe
 
@@ -134,6 +148,16 @@ jobs:
               fi
               sleep 2
             done
+
+            # The serving container is not necessarily this deploy's: anything
+            # that resolved FE_IMAGE differently would leave another build
+            # answering the check above.
+            RUNNING=$(docker inspect -f '{{.Config.Image}}' blog-generator-fe)
+            if [ "$RUNNING" != "$FE_IMAGE" ]; then
+              echo "fe is running $RUNNING, expected $FE_IMAGE"
+              exit 1
+            fi
+            echo "Running $RUNNING"
 
             docker image prune -f
             docker compose ps fe
