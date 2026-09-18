@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, AlertTriangle, RefreshCw, Copy, Check, ExternalLink, Send } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, RefreshCw, Copy, Check, ExternalLink, Send, Sprout, ChevronRight } from 'lucide-react';
 import { articleDraftApi } from '../api/articleDrafts';
 import { IN_PROGRESS_STATUSES, isAttemptInFlight } from '../types/articleDraft';
 import type { ArticleDraft, PublishRecord } from '../types/articleDraft';
@@ -142,6 +142,25 @@ function TitleWithCopy({ title }: { title: string }) {
       >
         {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
       </button>
+    </div>
+  );
+}
+
+// Where the draft came from. The candidate title stays alongside the seed
+// because generation may have rewritten the draft's own title since.
+function DraftSource({ candidate }: { candidate: NonNullable<ArticleDraft['topicCandidate']> }) {
+  return (
+    <div className="flex items-center gap-1.5 mt-2 min-w-0 text-xs text-gray-400">
+      <Link
+        to={`/topic-candidates?seedId=${candidate.topicSeedId}`}
+        title="Show this seed's candidates"
+        className="flex-shrink-0 inline-flex items-center gap-1 font-medium text-gray-500 hover:text-blue-600 transition-colors"
+      >
+        <Sprout className="w-3.5 h-3.5" />
+        {candidate.topicSeed.seed}
+      </Link>
+      <ChevronRight className="w-3 h-3 flex-shrink-0" />
+      <span className="truncate" title={candidate.title}>{candidate.title}</span>
     </div>
   );
 }
@@ -406,6 +425,7 @@ export default function ArticleDraftDetailPage() {
             <div className="flex-1 min-w-0">
               <TitleWithCopy title={draft.title} />
               <p className="text-sm text-gray-400 mt-1">{draft.keyword}</p>
+              {draft.topicCandidate && <DraftSource candidate={draft.topicCandidate} />}
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
               {/* On mobile the Publish action lives in the sticky bottom bar instead */}

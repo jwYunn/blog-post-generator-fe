@@ -67,12 +67,13 @@ src/
 
 Top navigation bar with these tabs (in order):
 1. Topic Seeds — `/topic-seeds` (Sprout icon)
-2. Article Drafts — `/article-drafts` (FileText icon)
-3. Publish History — `/publish-history` (Globe icon)
-4. API Sources — `/api-sources` (Database icon)
-5. Thumbnail Generator — `/thumbnail-generator` (ImageIcon icon)
+2. Topic Candidates — `/topic-candidates` (Lightbulb icon) — candidates from every seed; clicking a seed row opens it filtered to that seed
+3. Article Drafts — `/article-drafts` (FileText icon)
+4. Publish History — `/publish-history` (Globe icon)
+5. API Sources — `/api-sources` (Database icon)
+6. Thumbnail Generator — `/thumbnail-generator` (ImageIcon icon)
 
-Note: Topic Candidates page is not in the nav; it's accessed by clicking a seed row.
+The pipeline pages link to each other both ways: an approved candidate links to its draft, and a draft's detail page links back to its seed.
 
 ## State Management
 
@@ -80,7 +81,7 @@ Note: Topic Candidates page is not in the nav; it's accessed by clicking a seed 
 |-------|------|----------------|
 | Server state | TanStack Query | API data, caching, polling, mutations |
 | Local UI state | `useState` | Modals, loading indicators, pagination, view modes |
-| URL state | `useSearchParams` | `?seedId=` in TopicCandidatePage |
+| URL state | `useSearchParams` | `?seedId=` in TopicCandidatePage — the only source of the seed filter |
 | Ref state | `useRef` | Polling timeouts, previous values for change detection |
 
 ## QueryClient Configuration

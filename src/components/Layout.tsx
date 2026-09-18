@@ -1,9 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
-import { Sprout, FileText, Globe, NotebookPen, Database, ImageIcon } from 'lucide-react';
+import { Sprout, Lightbulb, FileText, Globe, NotebookPen, Database, ImageIcon } from 'lucide-react';
 
 const NAV_ITEMS = [
   { to: '/topic-seeds',           label: 'Topic Seeds',          icon: Sprout    },
+  { to: '/topic-candidates',      label: 'Topic Candidates',     icon: Lightbulb },
   { to: '/article-drafts',        label: 'Article Drafts',       icon: FileText  },
   { to: '/publish-history',       label: 'Publish History',      icon: Globe     },
   { to: '/api-sources',           label: 'API Sources',          icon: Database  },

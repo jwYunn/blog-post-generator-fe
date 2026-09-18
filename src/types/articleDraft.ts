@@ -1,3 +1,6 @@
+import type { TopicCandidate } from './topicCandidate';
+import type { TopicSeed } from './topicSeed';
+
 // ─── Status ──────────────────────────────────────────────────────────────────
 
 export type ArticleDraftStatus =
@@ -38,6 +41,8 @@ export interface ArticleOutline {
 export interface ArticleDraft {
   id: string;
   topicCandidateId: string;
+  /** The candidate and seed this draft came from - joined on the detail endpoint only */
+  topicCandidate?: TopicCandidate & { topicSeed: TopicSeed };
   title: string;
   keyword: string;
   status: ArticleDraftStatus;

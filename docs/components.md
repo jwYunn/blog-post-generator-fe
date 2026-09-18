@@ -140,6 +140,7 @@ Table of topic candidates with evaluation data, sorting, and approval action.
 ```typescript
 {
   data: TopicCandidate[]
+  seedNames?: Map<string, string>   // pass when listing every seed - rows then link to their seed
   isLoading: boolean
   isFetching: boolean
   isError: boolean
@@ -156,6 +157,8 @@ Columns: Title, Keyword, Score, Rank, Verdict, Detail, Status, Approve
 - **Detail** column: opens a modal showing `whyThisTopic`, `outlinePreview`, `searchIntent`, `targetReader`, `strengths`, `weaknesses`
 - **Verdict** badge: `keep` (emerald), `consider` (amber), `drop` (red)
 - **Approve** button: enabled for `pending` and `rejected` candidates; triggers `PATCH /topic-candidates/:id/status` and hands the result to `onApproved`
+- **Draft** link: replaces Approve once the candidate has a draft (`articleDraftId`), opening `/article-drafts/:id`
+- **Seed** link under the title when `seedNames` is passed, opening `/topic-candidates?seedId=`
 - Score and Rank columns are sortable
 
 ---
